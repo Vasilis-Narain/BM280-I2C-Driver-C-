@@ -103,6 +103,7 @@ void main() {
 
     //TODO: set ic_clk and related. Must be set before enabling
 
+    /*
     i2c1_hw->enable = 1;
 
     // I2C Rx/Tx Data Buffer and Command Register
@@ -118,7 +119,8 @@ void main() {
                         I2C_IC_DATA_CMD_STOP_BITS; // read command
 
     while (i2c1_hw->rxflr == 0) {}
-    //volatile u8 chip_id = i2c1_hw->data_cmd & I2C_IC_DATA_CMD_DAT_BITS;
+    volatile u8 chip_id = i2c1_hw->data_cmd & I2C_IC_DATA_CMD_DAT_BITS;
+    */
 
     sio_hw->gpio_oe_set = 1 << PIN25;
 
@@ -128,6 +130,7 @@ void main() {
             next += 500;
             sio_hw->gpio_togl = 1 << PIN25;
         }
+        __asm__ volatile("WFI");
         //for (volatile u32 i = CYCLES; i > 0; i--) {}
     }
 }
