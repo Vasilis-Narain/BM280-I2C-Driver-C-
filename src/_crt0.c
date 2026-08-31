@@ -34,11 +34,10 @@ void _crt0() {
 
     // in case main was made to return
     __asm__("CPSID I");
-    while (1) {
+    for (;;) {
         __asm__("WFI");
     }
 }
 
-static void _config_ref_clock() {
-}
+static void _config_ref_clock() {}
 static void _config_sys_clock() {}

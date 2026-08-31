@@ -18,9 +18,9 @@ typedef volatile u8 io_wo_8;
 // Atomic bit manipulation via the RP2350 register aliases: writing to
 // base+0x2000/0x3000/0x1000 sets/clears/xors the given bits in one bus
 // transaction, with no read-modify-write race against an interrupt.
-#define hw_set_alias_untyped(addr)   ((void *)(REG_ALIAS_SET_BITS + (u32)(addr)))
+#define hw_set_alias_untyped(addr) ((void *)(REG_ALIAS_SET_BITS + (u32)(addr)))
 #define hw_clear_alias_untyped(addr) ((void *)(REG_ALIAS_CLR_BITS + (u32)(addr)))
-#define hw_xor_alias_untyped(addr)   ((void *)(REG_ALIAS_XOR_BITS + (u32)(addr)))
+#define hw_xor_alias_untyped(addr) ((void *)(REG_ALIAS_XOR_BITS + (u32)(addr)))
 
 static inline void hw_set_bits(io_rw_32 *addr, u32 mask) {
     *(io_rw_32 *)hw_set_alias_untyped((volatile void *)addr) = mask;

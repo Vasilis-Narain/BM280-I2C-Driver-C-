@@ -13,7 +13,7 @@ void _DEFAULT_Handler() {
     // Throw all peripherals into reset
     resets_hw->reset = RESETS_RESET_RESET;
     __asm__("CPSID I");
-    while (1)
+    for (;;)
         __asm__("WFI"); // try to sleep forever
 }
 void __attribute__((weak, alias("_DEFAULT_Handler"))) NMI_Handler();
