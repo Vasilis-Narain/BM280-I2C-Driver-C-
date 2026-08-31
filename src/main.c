@@ -5,6 +5,10 @@
 #include <hardware/structs/pads_bank0.h>
 #include <hardware/structs/sio.h>
 #include <hardware/structs/i2c.h>
+#include <hardware/structs/systick.h>
+#include <hardware/regs/m33.h>
+#include <hardware/structs/ticks.h>
+#include <hardware/structs/m33.h>
 
 #include "driver/addresses.h"
 
@@ -24,9 +28,10 @@
 // 0x00000008 [3]     IC_10BITADDR_SLAVE (0) When acting as a slave, this bit controls whether the...
 // 0x00000006 [2:1]   SPEED        (0x2) These bits control at which speed the DW_apb_i2c...
 // 0x00000001 [0]     MASTER_MODE  (1) This bit controls whether the DW_apb_i2c master is enabled
-#define I2C_INIT_MASK (I2C_IC_CON_MASTER_MODE_VALUE_ENABLED |                    \
-                       I2C_IC_CON_SPEED_VALUE_STANDARD << I2C_IC_CON_SPEED_LSB | \
-                       I2C_IC_CON_IC_RESTART_EN_BITS | I2C_IC_CON_IC_SLAVE_DISABLE_BITS)
+#define I2C_INIT_SET (I2C_IC_CON_MASTER_MODE_VALUE_ENABLED |                    \
+                      I2C_IC_CON_SPEED_VALUE_STANDARD << I2C_IC_CON_SPEED_LSB | \
+                      I2C_IC_CON_IC_RESTART_EN_BITS |                           \
+                      I2C_IC_CON_IC_SLAVE_DISABLE_BITS)
 
 // 0x00000100 [8]     ISO          (1) Pad isolation control
 // 0x00000080 [7]     OD           (0) Output disable
@@ -42,15 +47,41 @@
 
 #define PADS_I2C_SET (PADS_BANK0_GPIO0_IE_BITS)
 
-#define RESETS_MASK (RESETS_RESET_IO_BANK0_BITS | RESETS_RESET_PADS_BANK0_BITS | RESETS_RESET_I2C1_BITS)
+#define RESETS_CLEAR (RESETS_RESET_IO_BANK0_BITS | RESETS_RESET_PADS_BANK0_BITS | RESETS_RESET_I2C1_BITS)
+
+#define SYSTICK_FREQ_HZ 1000
+#define EXT_CLK_FREQ_HZ 1000000
+#define SYSTICK_TOP (EXT_CLK_FREQ_HZ / SYSTICK_FREQ_HZ - 1)
+
+void configure_systick() {
+    // SysTick Control and Status Register
+    // 0x00010000 [16]    COUNTFLAG    (0) Returns 1 if timer counted to 0 since last time this was read
+    // 0x00000004 [2]     CLKSOURCE    (0) SysTick clock source
+    // 0x00000002 [1]     TICKINT      (0) Enables SysTick exception request: +
+    // 0x00000001 [0]     ENABLE       (0) Enable SysTick counter: +
+    ticks_hw->ticks[TICK_PROC0].cycles = 12;
+    ticks_hw->ticks[TICK_PROC0].ctrl = TICKS_PROC0_CTRL_ENABLE_BITS;
+    while (!(ticks_hw->ticks[TICK_PROC0].ctrl & TICKS_PROC0_CTRL_RUNNING_BITS)) {}
+
+    m33_hw->syst_rvr = SYSTICK_TOP;
+    m33_hw->syst_cvr = 0;
+    m33_hw->syst_csr = M33_SYST_CSR_TICKINT_BITS | M33_SYST_CSR_ENABLE_BITS;
+}
+
+volatile u32 ms = 0;
+void SYSTICK_Handler() {
+    ms++;
+}
 
 // Going to avoid making abstractions as much as possible to have this as a reference of
 // order of operations. However, using the provided `*.h` instead of handcoding
 // as irl I'd mostly be taking definitions from manufacturer (svd).
 void main() {
 
-    hw_clear_bits(&resets_hw->reset, RESETS_MASK);
-    while ((resets_hw->reset_done & RESETS_MASK) != RESETS_MASK) {}
+    hw_clear_bits(&resets_hw->reset, RESETS_CLEAR);
+    while ((resets_hw->reset_done & RESETS_CLEAR) != RESETS_CLEAR) {}
+
+    configure_systick();
 
     //io_bank0_hw
     io_bank0_hw->io[PIN25].ctrl = GPIO_FUNC_SIO;
@@ -78,7 +109,7 @@ void main() {
     // 0x00000006 [2:1]   SPEED        (0x2) These bits control at which speed the DW_apb_i2c...
     // 0x00000001 [0]     MASTER_MODE  (1) This bit controls whether the DW_apb_i2c master is enabled
     i2c1_hw->enable = 0;
-    i2c1_hw->con = I2C_INIT_MASK;
+    i2c1_hw->con = I2C_INIT_SET;
     i2c1_hw->tar = BME280_I2C_ADDR;
 
     //TODO: set ic_clk and related. Must be set before enabling
@@ -91,12 +122,23 @@ void main() {
     // 0x00000200 [9]     STOP         (0) This bit controls whether a STOP is issued after the...
     // 0x00000100 [8]     CMD          (0: write) This bit controls whether a read or a write is performed
     // 0x000000ff [7:0]   DAT          (0x00) This register contains the data to be transmitted or...
-    i2c1_hw->data_cmd = I2C_IC_DATA_CMD_CMD_BITS; // read command
+
+    i2c1_hw->data_cmd = 0xD0; // write command
+    i2c1_hw->data_cmd = I2C_IC_DATA_CMD_CMD_BITS |
+                        I2C_IC_DATA_CMD_RESTART_BITS |
+                        I2C_IC_DATA_CMD_STOP_BITS; // read command
+
+    while (i2c1_hw->rxflr == 0) {}
+    //volatile u8 chip_id = i2c1_hw->data_cmd & I2C_IC_DATA_CMD_DAT_BITS;
 
     sio_hw->gpio_oe_set = 1 << PIN25;
 
+    u32 next = 500;
     for (;;) {
-        sio_hw->gpio_togl = 1 << PIN25;
-        for (volatile u32 i = CYCLES; i > 0; i--) {}
+        if ((i32)(ms - next) >= 0) { // systick interrupt auto increments ms
+            next += 500;
+            sio_hw->gpio_togl = 1 << PIN25;
+        }
+        //for (volatile u32 i = CYCLES; i > 0; i--) {}
     }
 }
