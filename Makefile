@@ -31,8 +31,6 @@ ELF  := $(BUILD)/$(TARGET).elf
 UF2  := $(BUILD)/$(TARGET).uf2
 BIN  := $(BUILD)/$(TARGET).bin
 
-print-%:
-	@echo '$* = $($*)'
 
 all: $(UF2)
 
@@ -56,11 +54,28 @@ $(BUILD)/%.o: $(SRC)/%.S
 	@mkdir -p $(@D)
 	$(CC) $(CFLAGS) -MMD -MP -c $< -o $@
 
-flash: $(UF2)
-	picotool load -x $< -f
+CHIP := RP235x
+
+# Flash + reset via the CMSIS-DAP debug probe.
+flash: $(ELF)
+	probe-rs download --chip $(CHIP) $<
+	probe-rs reset --chip $(CHIP)
+
+# Flash and stay attached (RTT output, catches panics/faults).
+run: $(ELF)
+	probe-rs run --chip $(CHIP) $<
+
+# No probe needed: hold BOOTSEL, plug in, then copy the UF2 to the
+# RP2350 mass-storage volume. Set DRIVE= to your mounted drive letter.
+DRIVE ?= /d
+uf2: $(UF2)
+	cp $< $(DRIVE)/
 
 clean:
 	rm -rf $(BUILD)
 
-.PHONY: all flash clean
+print-%:
+	@echo '$* = $($*)'
+
+.PHONY: all flash run uf2 clean print-%
 -include $(DEPS)

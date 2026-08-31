@@ -3,9 +3,6 @@
 #include <hardware/structs/resets.h>
 
 extern void __stack_top();
-
-void (*const _InterruptVector[])();
-
 extern void _crt0();
 
 void _RESET_Handler() {
@@ -53,8 +50,7 @@ void __attribute__((weak, alias("_DEFAULT_Handler"))) SIO_IRQ_FIFO_Handler();
 void __attribute__((weak, alias("_DEFAULT_Handler"))) SIO_IRQ_BELL_Handler();
 void __attribute__((weak, alias("_DEFAULT_Handler"))) SIO_IRQ_FIFO_NS_Handler();
 void __attribute__((weak, alias("_DEFAULT_Handler"))) SIO_IRQ_BELL_NS_Handler();
-void __attribute__((weak, alias("_DEFAULT_Handler")))
-SIO_IRQ_MTIMECMP_Handler();
+void __attribute__((weak, alias("_DEFAULT_Handler"))) SIO_IRQ_MTIMECMP_Handler();
 void __attribute__((weak, alias("_DEFAULT_Handler"))) CLOCKS_IRQ_Handler();
 void __attribute__((weak, alias("_DEFAULT_Handler"))) SPI0_IRQ_Handler();
 void __attribute__((weak, alias("_DEFAULT_Handler"))) SPI1_IRQ_Handler();
@@ -70,8 +66,7 @@ void __attribute__((weak, alias("_DEFAULT_Handler"))) PROC1_IRQ_CTI_Handler();
 void __attribute__((weak, alias("_DEFAULT_Handler"))) PLL_SYS_IRQ_Handler();
 void __attribute__((weak, alias("_DEFAULT_Handler"))) PLL_USB_IRQ_Handler();
 void __attribute__((weak, alias("_DEFAULT_Handler"))) POWMAN_IRQ_POW_Handler();
-void __attribute__((weak, alias("_DEFAULT_Handler")))
-POWMAN_IRQ_TIMER_Handler();
+void __attribute__((weak, alias("_DEFAULT_Handler"))) POWMAN_IRQ_TIMER_Handler();
 void __attribute__((weak, alias("_DEFAULT_Handler"))) SPARE_IRQ_0_Handler();
 void __attribute__((weak, alias("_DEFAULT_Handler"))) SPARE_IRQ_1_Handler();
 void __attribute__((weak, alias("_DEFAULT_Handler"))) SPARE_IRQ_2_Handler();
@@ -80,6 +75,7 @@ void __attribute__((weak, alias("_DEFAULT_Handler"))) SPARE_IRQ_4_Handler();
 void __attribute__((weak, alias("_DEFAULT_Handler"))) SPARE_IRQ_5_Handler();
 
 #define RESERVED ((void (*)())0x44565352) // ASCII RSVD
+
 void (*const _InterruptVector[])() __attribute__((section(".vector_table"))) = {
     &__stack_top,
     _RESET_Handler,
