@@ -1,0 +1,12 @@
+--target=arm-none-eabi
+-mcpu=cortex-m33
+-mthumb
+-ffreestanding
+-Wall
+-Wextra
+-I.
+-IC:/Users/Vasilis/pico-sdk/src/rp2350/hardware_structs/include
+-IC:/Users/Vasilis/pico-sdk/src/rp2350/hardware_regs/include
+-isystemC:/Program Files (x86)/Arm GNU Toolchain arm-none-eabi/12.2 mpacbti-rel1/lib/gcc/arm-none-eabi/12.2.1/include
+-isystemC:/Program Files (x86)/Arm GNU Toolchain arm-none-eabi/12.2 mpacbti-rel1/lib/gcc/arm-none-eabi/12.2.1/include-fixed
+-isystemC:/Program Files (x86)/Arm GNU Toolchain arm-none-eabi/12.2 mpacbti-rel1/arm-none-eabi/include
