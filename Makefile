@@ -2,8 +2,12 @@ TARGET   := firmware
 LDSCRIPT := link.ld
 BUILD    := build
 SRC := src
-SRCS     := $(wildcard $(SRC)/*.c) $(wildcard $(SRC)/*.S)
-SRCS_RAW  := $(SRCS:src/%=%)
+
+# Recursive wildcard: make has no built-in for this. Walks every directory
+# under $1 and returns files matching $2, so src/driver/i2c.c is picked up.
+rwildcard = $(foreach d,$(wildcard $(1:=/*)),$(call rwildcard,$d,$2) $(filter $(subst *,%,$2),$d))
+SRCS      := $(call rwildcard,$(SRC),*.c) $(call rwildcard,$(SRC),*.S)
+SRCS_RAW  := $(SRCS:$(SRC)/%=%)
 
 CROSS   := arm-none-eabi-
 CC      := $(CROSS)gcc
@@ -32,10 +36,8 @@ print-%:
 
 all: $(UF2)
 
-$(BUILD):
-	mkdir -p $(BUILD)
-
-$(ELF): $(OBJS) $(LDSCRIPT) | $(BUILD)
+$(ELF): $(OBJS) $(LDSCRIPT)
+	@mkdir -p $(@D)
 	$(CC) $(OBJS) $(LDFLAGS) -o $@
 	$(SIZE) $@
 
@@ -45,10 +47,13 @@ $(BIN): $(ELF)
 $(UF2): $(ELF)
 	picotool uf2 convert $< $@ --family rp2350-arm-s
 
-$(BUILD)/%.o: $(SRC)/%.c | $(BUILD)
+# $(@D) is the target's directory, so build/ mirrors src/ at any depth.
+$(BUILD)/%.o: $(SRC)/%.c
+	@mkdir -p $(@D)
 	$(CC) $(CFLAGS) -MMD -MP -c $< -o $@
 
-$(BUILD)/%.o: $(SRC)/%.S | $(BUILD)
+$(BUILD)/%.o: $(SRC)/%.S
+	@mkdir -p $(@D)
 	$(CC) $(CFLAGS) -MMD -MP -c $< -o $@
 
 flash: $(UF2)
