@@ -1,6 +1,6 @@
-#include "types_ext.h"
-#include "hardware/regs/resets.h"
-#include "hardware/structs/resets.h"
+#include <type_alias.h>
+#include <hardware/regs/resets.h>
+#include <hardware/structs/resets.h>
 
 extern void __stack_top();
 

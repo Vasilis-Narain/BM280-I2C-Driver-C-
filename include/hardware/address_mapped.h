@@ -1,7 +1,7 @@
 #pragma once
 #include <assert.h>
-#include "types_ext.h"
-#include "hardware/regs/addressmap.h"
+#include <type_alias.h>
+#include <hardware/regs/addressmap.h>
 typedef volatile u32 io_rw_32;
 typedef const volatile u32 io_ro_32;
 typedef volatile u32 io_wo_32;

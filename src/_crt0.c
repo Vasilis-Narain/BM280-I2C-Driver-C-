@@ -1,4 +1,4 @@
-#include "types_ext.h"
+#include <type_alias.h>
 
 extern u8 __data_start;
 extern u8 __data_end;
