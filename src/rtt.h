@@ -73,7 +73,7 @@ extern rtt_ctrl_block_t rtt_ctrl_block;
 
 b32 rtt_write(const char *str, u32 len, u8 channel);
 u32 rtt_read(char *buf, u32 max, u8 channel);
-void u32_to_hex(u32 num, char out[10]);
 b32 rtt_print_hex(u32 num, u8 channel);
+void u32_to_hex(u32 num, char out[10]);
 
 #define rtt_print(s, ch) rtt_write("" s, sizeof("" s) - 1, ch)

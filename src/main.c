@@ -9,7 +9,7 @@
 #include <hardware/structs/ticks.h>
 #include <hardware/structs/m33.h>
 
-#include "driver/addresses.h"
+//#include "driver/addresses.h"
 #include "rtt.h"
 
 #define CYCLES 1700000 / 2
@@ -98,6 +98,7 @@ void main() {
 
     // Config I2C1 as master
     i2c1_hw->enable = 0;
+    /*
     i2c1_hw->con = I2C_INIT_SET;
     i2c1_hw->tar = BME280_I2C_ADDR;
 
@@ -120,18 +121,27 @@ void main() {
     while (i2c1_hw->rxflr == 0) {}
     volatile u32 chip_id = i2c1_hw->data_cmd & I2C_IC_DATA_CMD_DAT_BITS;
 
+    // Long way to print hex (needs second rtt call to add newline)
     char str_buf[10];
-    rtt_u32_to_hex(chip_id, str_buf);
+    u32_to_hex(chip_id, str_buf);
     rtt_write(str_buf, 10, 0);
     rtt_print("\n", 0);
+    */
 
     sio_hw->gpio_oe_set = 1 << PIN25;
 
     u32 next = 500;
+    u32 blinks = 0;
+    u32 isOn = 0;
     for (;;) {
         if ((i32)(ms - next) >= 0) { // systick interrupt auto increments ms
             next += 500;
+            isOn = !isOn;
             sio_hw->gpio_togl = 1 << PIN25;
+            if (isOn) {
+                blinks++;
+                rtt_print_hex(blinks, 0);
+            }
         }
         __asm__ volatile("WFI");
     }

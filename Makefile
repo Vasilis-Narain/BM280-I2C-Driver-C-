@@ -63,7 +63,7 @@ flash: $(ELF)
 
 # Flash and stay attached (RTT output, catches panics/faults).
 run: $(ELF)
-	probe-rs run --chip $(CHIP) --scan-region ram --always-print-stacktrace $<
+	probe-rs run --chip $(CHIP) --scan-region 0x20000000 --always-print-stacktrace $<
 
 # No probe needed: hold BOOTSEL, plug in, then copy the UF2 to the
 # RP2350 mass-storage volume. Set DRIVE= to your mounted drive letter.
