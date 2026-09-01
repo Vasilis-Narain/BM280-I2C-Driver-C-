@@ -77,7 +77,7 @@ void SYSTICK_Handler() {
 }
 
 // Going to avoid making abstractions as much as possible to have this as a reference of
-// order of operations. However, using the provided `*.h` instead of handcoding
+// order of operations. However, I'm using the provided `*.h` instead of handcoding
 // as irl I'd mostly be taking definitions from manufacturer (svd).
 void main() {
 

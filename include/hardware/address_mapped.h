@@ -17,9 +17,7 @@ typedef volatile u8 io_wo_8;
 
 #define PTR(addr) ((void *)(addr))
 
-// Atomic bit manipulation via the RP2350 register aliases: writing to
-// base+0x2000/0x3000/0x1000 sets/clears/xors the given bits in one bus
-// transaction, with no read-modify-write race against an interrupt.
+// Atomic bit manipulation via the RP2350 register aliases
 #define hw_set_alias_untyped(addr) ((void *)(REG_ALIAS_SET_BITS + (u32)(addr)))
 #define hw_clear_alias_untyped(addr) ((void *)(REG_ALIAS_CLR_BITS + (u32)(addr)))
 #define hw_xor_alias_untyped(addr) ((void *)(REG_ALIAS_XOR_BITS + (u32)(addr)))
