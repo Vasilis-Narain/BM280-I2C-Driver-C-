@@ -20,7 +20,7 @@ INCS := -Iinclude \
         -I$(SDK)/rp2350/hardware_regs/include
 
 CPUFLAGS := -mcpu=cortex-m33 -mthumb -mfloat-abi=soft
-CFLAGS   := $(CPUFLAGS) -Og -g3 -Wall -Wextra -ffreestanding \
+CFLAGS   := $(CPUFLAGS) -std=gnu17 -Og -g3 -Wall -Wextra -ffreestanding \
             -ffunction-sections -fdata-sections $(INCS)
 LDFLAGS  := $(CPUFLAGS) -T$(LDSCRIPT) -nostdlib -Wl,--gc-sections \
             -Wl,-Map=$(BUILD)/$(TARGET).map
@@ -63,7 +63,7 @@ flash: $(ELF)
 
 # Flash and stay attached (RTT output, catches panics/faults).
 run: $(ELF)
-	probe-rs run --chip $(CHIP) $<
+	probe-rs run --chip $(CHIP) --scan-region ram --always-print-stacktrace $<
 
 # No probe needed: hold BOOTSEL, plug in, then copy the UF2 to the
 # RP2350 mass-storage volume. Set DRIVE= to your mounted drive letter.

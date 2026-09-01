@@ -15,6 +15,8 @@ typedef const volatile u8 io_ro_8;
 typedef volatile u8 io_wo_8;
 #define _REG_(x)
 
+#define PTR(addr) ((void *)(addr))
+
 // Atomic bit manipulation via the RP2350 register aliases: writing to
 // base+0x2000/0x3000/0x1000 sets/clears/xors the given bits in one bus
 // transaction, with no read-modify-write race against an interrupt.
