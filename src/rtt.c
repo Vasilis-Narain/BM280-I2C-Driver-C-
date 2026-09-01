@@ -24,7 +24,7 @@ rtt_ctrl_block_t __attribute__((used, section(".rtt_cb"))) rtt_ctrl_block = {
     },
     .aDown = {
         {
-            .sName = "Input CMD",
+            .sName = ">",
             .pBuffer = rtt_buffer_down,
             .SizeOfBuffer = RTT_BUFFER_SIZE_DOWN,
             .WrOff = 0,

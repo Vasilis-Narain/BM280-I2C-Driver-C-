@@ -9,13 +9,16 @@
 #include <hardware/structs/ticks.h>
 #include <hardware/structs/m33.h>
 
-//#include "driver/addresses.h"
+#include "driver/addresses.h"
 #include "rtt.h"
 
 #define CYCLES 1700000 / 2
 #define PIN25 25
 #define SDA 14
 #define SCL 15
+
+#define RTT_WRITE_CHANNEL 0
+#define RTT_READ_CHANNEL 0
 
 // I2C Control Register
 // 0x00000400 [10]    STOP_DET_IF_MASTER_ACTIVE (0) Master issues the STOP_DET interrupt irrespective of...
@@ -97,12 +100,16 @@ void main() {
     hw_set_bits(&pads_bank0_hw->io[SCL], PADS_I2C_SET);
 
     // Config I2C1 as master
+    //TODO: set ic_clk and related. Must be set before enabling
     i2c1_hw->enable = 0;
-    /*
+    while (i2c1_hw->enable_status & I2C_IC_ENABLE_STATUS_IC_EN_BITS) {}
+
     i2c1_hw->con = I2C_INIT_SET;
     i2c1_hw->tar = BME280_I2C_ADDR;
-
-    //TODO: set ic_clk and related. Must be set before enabling
+    i2c1_hw->ss_scl_hcnt = 48; // Following numbers calculated from specification formulas for 12Mhz clk_sys
+    i2c1_hw->ss_scl_lcnt = 72;
+    i2c1_hw->fs_spklen = 1;
+    i2c1_hw->sda_hold = 4;
 
     i2c1_hw->enable = 1;
 
@@ -119,29 +126,24 @@ void main() {
                         I2C_IC_DATA_CMD_STOP_BITS; // read command
 
     while (i2c1_hw->rxflr == 0) {}
-    volatile u32 chip_id = i2c1_hw->data_cmd & I2C_IC_DATA_CMD_DAT_BITS;
+    u32 chip_id = i2c1_hw->data_cmd & I2C_IC_DATA_CMD_DAT_BITS;
 
     // Long way to print hex (needs second rtt call to add newline)
+    /*
     char str_buf[10];
     u32_to_hex(chip_id, str_buf);
     rtt_write(str_buf, 10, 0);
     rtt_print("\n", 0);
     */
+    rtt_print_hex(chip_id, RTT_WRITE_CHANNEL);
 
     sio_hw->gpio_oe_set = 1 << PIN25;
 
     u32 next = 500;
-    u32 blinks = 0;
-    u32 isOn = 0;
     for (;;) {
         if ((i32)(ms - next) >= 0) { // systick interrupt auto increments ms
             next += 500;
-            isOn = !isOn;
             sio_hw->gpio_togl = 1 << PIN25;
-            if (isOn) {
-                blinks++;
-                rtt_print_hex(blinks, 0);
-            }
         }
         __asm__ volatile("WFI");
     }
