@@ -18,7 +18,7 @@ void i2c_init_master() {
     i2c1_hw->con = I2C_INIT_SET;
 
     // Specify target address
-    i2c1_hw->tar = BME280_I2C_ADDR;
+    i2c1_hw->tar = BME280_I2C_ADDR_PRIM;
 
     // The following numbers calculated from specification formulas for 12Mhz clk_sys
     // lcnt and hcnt ar ic_clk settings
@@ -41,7 +41,7 @@ void EXAMPLE_READ_PROTOCOL_CMD() {
     // 0x00000100 [8]     CMD          (0: write) This bit controls whether a read or a write is performed
     // 0x000000ff [7:0]   DAT          (0x00) This register contains the data to be transmitted or...
 
-    i2c1_hw->data_cmd = 0xD0; // write command querying 0xD0 register
+    i2c1_hw->data_cmd = 0xD0; // write command querying 0xD0 register, this is the ID register on bme280
     i2c1_hw->data_cmd = I2C_IC_DATA_CMD_CMD_BITS |
                         I2C_IC_DATA_CMD_RESTART_BITS |
                         I2C_IC_DATA_CMD_STOP_BITS; // read command

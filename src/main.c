@@ -111,7 +111,7 @@ void main() {
     while (i2c1_hw->enable_status & I2C_IC_ENABLE_STATUS_IC_EN_BITS) {}
 
     i2c1_hw->con = I2C_INIT_SET;
-    i2c1_hw->tar = BME280_I2C_ADDR;
+    i2c1_hw->tar = BME280_I2C_ADDR_PRIM;
 
     // The following numbers calculated from specification formulas for 12Mhz clk_sys
     // lcnt and hcnt are mandatory ic_clk settings
