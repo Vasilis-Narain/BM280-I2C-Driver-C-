@@ -1,7 +1,16 @@
 #pragma once
 #include <type_alias.h>
 
+#ifndef RTT_WRITE_CHANNEL
+#define RTT_WRITE_CHANNEL 0
+#endif
+#ifndef RTT_READ_CHANNEL
+#define RTT_READ_CHANNEL 0
+#endif
+
 #define RTT_HEX32_LEN 10 // "0x" + 8 digits
+#define RTT_HEX16_LEN 6  // "0x" + 4 digits
+#define RTT_HEX8_LEN 4   // "0x" + 2 digits
 
 #ifndef RTT_MAX_NUM_UP_BUFFERS
 #define RTT_MAX_NUM_UP_BUFFERS (1)
@@ -73,7 +82,11 @@ extern rtt_ctrl_block_t rtt_ctrl_block;
 
 b32 rtt_write(const char *str, u32 len, u8 channel);
 u32 rtt_read(char *buf, u32 max, u8 channel);
-b32 rtt_print_hex(u32 num, u8 channel);
-void u32_to_hex(u32 num, char out[10]);
+b32 rtt_print_hex_u32(u32 num, u8 channel);
+b32 rtt_print_hex_u16(u16 num, u8 channel);
+b32 rtt_print_hex_u8(u8 num, u8 channel);
+void u32_to_hex(u32 num, char out[RTT_HEX32_LEN]);
+void u16_to_hex(u16 num, char out[RTT_HEX16_LEN]);
+void u8_to_hex(u8 num, char out[RTT_HEX8_LEN]);
 
 #define rtt_print(s, ch) rtt_write("" s, sizeof("" s) - 1, ch)

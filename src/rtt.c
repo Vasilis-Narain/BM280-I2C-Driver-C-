@@ -1,7 +1,9 @@
 #include <type_alias.h>
 #include "rtt.h"
 
+static u16 spread16(u8 num);
 static u32 spread32(u16 num);
+static void copy16(char *out, u16 num);
 static void copy32(char *out, u32 num);
 
 char rtt_buffer_up[RTT_BUFFER_SIZE_UP];
@@ -88,7 +90,7 @@ u32 rtt_read(char *buf, u32 max, u8 channel) {
     return num_bytes_processed;
 }
 
-b32 rtt_print_hex(u32 num, u8 channel) {
+b32 rtt_print_hex_u32(u32 num, u8 channel) {
     char buf[RTT_HEX32_LEN + 1];
     u32_to_hex(num, buf);
     buf[RTT_HEX32_LEN] = '\n';
@@ -96,7 +98,21 @@ b32 rtt_print_hex(u32 num, u8 channel) {
     return res;
 }
 
-// Following is to convert a u32 to a hex string.
+b32 rtt_print_hex_u16(u16 num, u8 channel) {
+    char buf[RTT_HEX16_LEN + 1];
+    u16_to_hex(num, buf);
+    buf[RTT_HEX16_LEN] = '\n';
+    return rtt_write(buf, sizeof(buf), channel);
+}
+
+b32 rtt_print_hex_u8(u8 num, u8 channel) {
+    char buf[RTT_HEX8_LEN + 1];
+    u8_to_hex(num, buf);
+    buf[RTT_HEX8_LEN] = '\n';
+    return rtt_write(buf, sizeof(buf), channel);
+}
+
+// Following functions are to convert a uint*_t to a hex string.
 //
 // ! Does not add a null terminator !
 //
@@ -104,11 +120,23 @@ b32 rtt_print_hex(u32 num, u8 channel) {
 //
 // Modified from https://johnnylee-sde.github.io/Fast-unsigned-integer-to-hex-string/
 //
-void u32_to_hex(u32 num, char out[10]) {
+void u32_to_hex(u32 num, char out[RTT_HEX32_LEN]) {
     out[0] = '0';
     out[1] = 'x';
     copy32(out + 2, spread32((u16)(num >> 16)));
     copy32(out + 6, spread32((u16)(num)));
+}
+
+void u16_to_hex(u16 num, char out[RTT_HEX16_LEN]) {
+    out[0] = '0';
+    out[1] = 'x';
+    copy32(out + 2, spread32(num));
+}
+
+void u8_to_hex(u8 num, char out[RTT_HEX8_LEN]) {
+    out[0] = '0';
+    out[1] = 'x';
+    copy16(out + 2, spread16(num));
 }
 
 static u32 spread32(u16 num) {
@@ -120,9 +148,22 @@ static u32 spread32(u16 num) {
     return x + 0x30303030 + m * 39;
 }
 
+static u16 spread16(u8 num) {
+    u16 x = num;
+    x = ((x & 0xF) << 8) | ((x & 0xF0) >> 4);
+
+    u32 m = ((x + 0x0606) >> 4) & 0x0101;
+    return x + 0x3030 + m * 39;
+}
+
 static void copy32(char *out, u32 num) {
     out[0] = (char)(num >> 0);
     out[1] = (char)(num >> 8);
     out[2] = (char)(num >> 16);
     out[3] = (char)(num >> 24);
+}
+
+static void copy16(char *out, u16 num) {
+    out[0] = (char)(num >> 0);
+    out[1] = (char)(num >> 8);
 }

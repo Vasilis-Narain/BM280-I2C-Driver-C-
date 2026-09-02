@@ -12,9 +12,9 @@ void _RESET_Handler() {
 void _DEFAULT_Handler() {
     // Throw all peripherals into reset
     resets_hw->reset = RESETS_RESET_RESET;
-    __asm__("CPSID I");
+    __asm__ volatile("CPSID I");
     for (;;)
-        __asm__("WFI"); // try to sleep forever
+        __asm__ volatile("WFI"); // try to sleep forever
 }
 void __attribute__((weak, alias("_DEFAULT_Handler"))) NMI_Handler();
 void __attribute__((weak, alias("_DEFAULT_Handler"))) SYSTICK_Handler();
