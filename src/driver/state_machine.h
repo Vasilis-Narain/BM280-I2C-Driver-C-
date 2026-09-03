@@ -12,6 +12,23 @@
 #define SCL_PIN 15
 #endif
 
+#ifndef I2C1_ENABLE
+#define I2C1_ENABLE
+#endif
+
+#if !defined(I2C1_ENABLE)
+#if !defined(I2C0_ENABLE)
+#error Must define either `I2C0_ENABLE` or `I2C1_ENABLE`
+#endif
+#endif
+
+#ifdef I2C1_ENABLE
+#define i2c_hw i2c1_hw
+#endif
+#ifdef I2C0_ENABLE
+#define i2c_hw i2c0_hw
+#endif
+
 // I2C Control Register
 // 0x00000400 [10]    STOP_DET_IF_MASTER_ACTIVE (0) Master issues the STOP_DET interrupt irrespective of...
 // 0x00000200 [9]     RX_FIFO_FULL_HLD_CTRL (0) This bit controls whether DW_apb_i2c should hold the bus...

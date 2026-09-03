@@ -10,27 +10,34 @@ void i2c_init_master() {
     hw_set_bits(&pads_bank0_hw->io[SDA_PIN], PADS_I2C_SET);
     hw_set_bits(&pads_bank0_hw->io[SCL_PIN], PADS_I2C_SET);
 
+#ifdef I2C1_ENABLE
+#define i2c_hw i2c1_hw
+#endif
+#ifdef I2C0_ENABLE
+#define i2c_hw i2c0_hw
+#endif
+
     // Most i2c config requires enable = 0.
-    i2c1_hw->enable = 0;
-    while (i2c1_hw->enable_status & I2C_IC_ENABLE_STATUS_IC_EN_BITS) {}
+    i2c_hw->enable = 0;
+    while (i2c_hw->enable_status & I2C_IC_ENABLE_STATUS_IC_EN_BITS) {}
 
     // Config I2C1 as master
-    i2c1_hw->con = I2C_INIT_SET;
+    i2c_hw->con = I2C_INIT_SET;
 
     // Specify target address
-    i2c1_hw->tar = BME280_I2C_ADDR_PRIM;
+    i2c_hw->tar = BME280_I2C_ADDR_PRIM;
 
     // The following numbers calculated from specification formulas for 12Mhz clk_sys
     // lcnt and hcnt ar ic_clk settings
     //
     // TODO(vasilis): calculate these at comptime
     //
-    i2c1_hw->ss_scl_hcnt = 48;
-    i2c1_hw->ss_scl_lcnt = 72;
-    i2c1_hw->fs_spklen = 1;
-    i2c1_hw->sda_hold = 4;
+    i2c_hw->ss_scl_hcnt = 48;
+    i2c_hw->ss_scl_lcnt = 72;
+    i2c_hw->fs_spklen = 1;
+    i2c_hw->sda_hold = 4;
 
-    i2c1_hw->enable = 1;
+    i2c_hw->enable = 1;
 }
 
 void EXAMPLE_READ_PROTOCOL_CMD() {
