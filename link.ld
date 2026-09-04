@@ -21,8 +21,8 @@ SECTIONS
     .data : {
         . = ALIGN(4);
         __data_start = .;
-        *(.data*)
         KEEP(*(.rtt_cb))
+        *(.data*)
         . = ALIGN(4);
         __data_end = .;
     } > RAM AT> FLASH

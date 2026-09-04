@@ -10,7 +10,7 @@ char rtt_buffer_up[RTT_BUFFER_SIZE_UP];
 char rtt_buffer_down[RTT_BUFFER_SIZE_DOWN];
 
 // Global data
-rtt_ctrl_block_t __attribute__((used, section(".rtt_cb"))) rtt_ctrl_block = {
+rtt_ctrl_block_t __attribute__((used, section(".rtt_cb"))) _SEGGER_RTT = {
     .acID = "SEGGER RTT\0\0\0\0\0\0",
     .MaxNumUpBufers = RTT_MAX_NUM_UP_BUFFERS,
     .MaxNumDownBufers = RTT_MAX_NUM_DOWN_BUFFERS,
@@ -37,8 +37,8 @@ rtt_ctrl_block_t __attribute__((used, section(".rtt_cb"))) rtt_ctrl_block = {
 };
 
 b32 rtt_write(const char *str, u32 len, u8 channel) {
-    u32 wr_idx = rtt_ctrl_block.aUp[channel].WrOff;
-    u32 rd_idx = (u32)rtt_ctrl_block.aUp[channel].RdOff;
+    u32 wr_idx = _SEGGER_RTT.aUp[channel].WrOff;
+    u32 rd_idx = (u32)_SEGGER_RTT.aUp[channel].RdOff;
     b32 success = 1;
 
     for (u32 i = 0; i < len; i++) {
@@ -60,13 +60,13 @@ b32 rtt_write(const char *str, u32 len, u8 channel) {
     RTT_DMB();
 #endif
 
-    rtt_ctrl_block.aUp[channel].WrOff = wr_idx;
+    _SEGGER_RTT.aUp[channel].WrOff = wr_idx;
     return success;
 }
 
 u32 rtt_read(char *buf, u32 max, u8 channel) {
-    u32 wr_idx = (u32)rtt_ctrl_block.aDown[channel].WrOff;
-    u32 rd_idx = rtt_ctrl_block.aDown[channel].RdOff;
+    u32 wr_idx = (u32)_SEGGER_RTT.aDown[channel].WrOff;
+    u32 rd_idx = _SEGGER_RTT.aDown[channel].RdOff;
     char *tmp = buf;
     u32 num_bytes_processed = 0;
 
@@ -86,7 +86,7 @@ u32 rtt_read(char *buf, u32 max, u8 channel) {
     RTT_DMB();
 #endif
 
-    rtt_ctrl_block.aDown[channel].RdOff = rd_idx;
+    _SEGGER_RTT.aDown[channel].RdOff = rd_idx;
     return num_bytes_processed;
 }
 

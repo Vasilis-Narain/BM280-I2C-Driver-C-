@@ -9,8 +9,8 @@
 #include <hardware/structs/ticks.h>
 #include <hardware/structs/m33.h>
 
-#include "driver/addresses.h"
 #include "rtt.h"
+#include "driver/i2c_state_machine.h"
 
 #define SYST_CYCLES 12
 #define PIN25 25
@@ -53,7 +53,7 @@
 #define EXT_CLK_FREQ_HZ 1000000
 #define SYSTICK_TOP (EXT_CLK_FREQ_HZ / SYSTICK_FREQ_HZ - 1)
 
-// clk_sys must already be configured. Usually done in `crt0`
+/* clk_sys must already be configured. Usually done in `crt0`*/
 void configure_systick(u8 cycles) {
     ticks_hw->ticks[TICK_PROC0].cycles = cycles;
     ticks_hw->ticks[TICK_PROC0].ctrl = TICKS_PROC0_CTRL_ENABLE_BITS;
@@ -98,45 +98,32 @@ void main() {
     io_bank0_hw->io[SDA_PIN].ctrl = GPIO_FUNC_I2C;
     io_bank0_hw->io[SCL_PIN].ctrl = GPIO_FUNC_I2C;
 
-    // Pads bank -> configure pads
+    // Pads bank -> configure pads for led
     hw_clear_bits(&pads_bank0_hw->io[PIN25], PADS_BANK0_GPIO0_ISO_BITS);
 
-    hw_clear_bits(&pads_bank0_hw->io[SDA_PIN], PADS_I2C_CLEAR);
-    hw_clear_bits(&pads_bank0_hw->io[SCL_PIN], PADS_I2C_CLEAR);
-    hw_set_bits(&pads_bank0_hw->io[SDA_PIN], PADS_I2C_SET);
-    hw_set_bits(&pads_bank0_hw->io[SCL_PIN], PADS_I2C_SET);
+    rtt_print("\nRTT OK...\n", 0);
+    i2c_init_master();
 
-    // Config I2C1 as master
-    i2c1_hw->enable = 0;
-    while (i2c1_hw->enable_status & I2C_IC_ENABLE_STATUS_IC_EN_BITS) {}
+    bme280_calib_tp tp_params;
+    get_tp_params(&tp_params);
 
-    i2c1_hw->con = I2C_INIT_SET;
-    i2c1_hw->tar = BME280_I2C_ADDR_PRIM;
+    rtt_print("\n...printing tp_params:\n", 0);
+    u16 *tmp = (u16 *)&tp_params;
+    for (u8 i = 0; i < 12; i++) {
+        rtt_print_hex_u16(*tmp++, 0);
+    }
 
-    // The following numbers calculated from specification formulas for 12Mhz clk_sys
-    // lcnt and hcnt are mandatory ic_clk settings
-    i2c1_hw->ss_scl_hcnt = 48;
-    i2c1_hw->ss_scl_lcnt = 72;
-    i2c1_hw->fs_spklen = 1;
-    i2c1_hw->sda_hold = 4;
+    bme280_calib_hum hum_params;
+    get_hum_params(&hum_params);
 
-    i2c1_hw->enable = 1;
-
-    // I2C Rx/Tx Data Buffer and Command Register
-    // 0x00000800 [11]    FIRST_DATA_BYTE (0) Indicates the first data byte received after the address...
-    // 0x00000400 [10]    RESTART      (0) This bit controls whether a RESTART is issued before the...
-    // 0x00000200 [9]     STOP         (0) This bit controls whether a STOP is issued after the...
-    // 0x00000100 [8]     CMD          (0: write) This bit controls whether a read or a write is performed
-    // 0x000000ff [7:0]   DAT          (0x00) This register contains the data to be transmitted or...
-
-    i2c1_hw->data_cmd = 0xD0; // write command querying 0xD0 register
-    i2c1_hw->data_cmd = I2C_IC_DATA_CMD_CMD_BITS |
-                        I2C_IC_DATA_CMD_RESTART_BITS |
-                        I2C_IC_DATA_CMD_STOP_BITS; // read command
-
-    while (i2c1_hw->rxflr == 0) {}
-    u8 chip_id = i2c1_hw->data_cmd & I2C_IC_DATA_CMD_DAT_BITS;
-    rtt_print_hex_u8(chip_id, RTT_WRITE_CHANNEL);
+    rtt_print("\n...printing hum_params:\n", 0);
+    rtt_print_hex_u8(hum_params.dig_h1, 0);
+    rtt_print_hex_u16(hum_params.dig_h2, 0);
+    rtt_print_hex_u8(hum_params.dig_h3, 0);
+    //TODO(vasilis): wrong assumption for dig_h4 dig_h5! Not byte aligned
+    rtt_print_hex_u16(hum_params.dig_h4, 0);
+    rtt_print_hex_u16(hum_params.dig_h5, 0);
+    rtt_print_hex_u8(hum_params.dig_h6, 0);
 
     sio_hw->gpio_oe_set = 1 << PIN25; // output enable SIO reg. Atomic set.
     for (;;) {

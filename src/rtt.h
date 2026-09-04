@@ -78,7 +78,7 @@ typedef struct {
 } rtt_ctrl_block_t;
 
 // Global data
-extern rtt_ctrl_block_t rtt_ctrl_block;
+extern rtt_ctrl_block_t _SEGGER_RTT;
 
 b32 rtt_write(const char *str, u32 len, u8 channel);
 u32 rtt_read(char *buf, u32 max, u8 channel);

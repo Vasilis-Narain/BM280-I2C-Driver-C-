@@ -77,17 +77,6 @@
 #endif
 
 /******************************************************************************/
-/*! @name        Compiler switch macros Definitions                */
-/******************************************************************************/
-#ifndef BME280_64BIT_ENABLE  /*< Check if 64-bit integer (using BME280_64BIT_ENABLE) is enabled */
-#ifndef BME280_32BIT_ENABLE  /*< Check if 32-bit integer (using BME280_32BIT_ENABLE) is enabled */
-#ifndef BME280_DOUBLE_ENABLE /*< If any of the integer data types not enabled then enable BME280_DOUBLE_ENABLE */
-#define BME280_DOUBLE_ENABLE
-#endif
-#endif
-#endif
-
-/******************************************************************************/
 /*! @name        General Macro Definitions                */
 /******************************************************************************/
 #ifndef TRUE
@@ -135,7 +124,7 @@
 /*! @name Register Address */
 #define BME280_REG_CHIP_ID UINT8_C(0xD0)
 #define BME280_REG_RESET UINT8_C(0xE0)
-#define BME280_REG_TEMP_PRESS_CALIB_DATA UINT8_C(0x88)
+#define BME280_REG_TEMP_PRESS_CALIB_DATA_START UINT8_C(0x88)
 #define BME280_REG_HUMIDITY_CALIB_DATA UINT8_C(0xE1)
 #define BME280_REG_CTRL_HUM UINT8_C(0xF2)
 #define BME280_REG_STATUS UINT8_C(0xF3)

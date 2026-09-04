@@ -1,0 +1,59 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "make",
+      "type": "shell",
+      "command": "make",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PATH": "C:\\Program Files (x86)\\GnuWin32\\bin;C:\\Program Files (x86)\\Arm GNU Toolchain arm-none-eabi\\12.2 mpacbti-rel1\\bin;C:\\Users\\Vasilis\\picotool\\build\\Release;C:\\Users\\Vasilis\\.cargo\\bin;${env:PATH}"
+        }
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [
+        "$gcc"
+      ]
+    },
+    {
+      "label": "make clean",
+      "type": "shell",
+      "command": "make",
+      "args": [
+        "clean"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PATH": "C:\\Program Files (x86)\\GnuWin32\\bin;C:\\Program Files (x86)\\Arm GNU Toolchain arm-none-eabi\\12.2 mpacbti-rel1\\bin;C:\\Users\\Vasilis\\picotool\\build\\Release;C:\\Users\\Vasilis\\.cargo\\bin;${env:PATH}"
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "reset target",
+      "type": "shell",
+      "command": "probe-rs",
+      "args": [
+        "reset",
+        "--chip",
+        "RP235x"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PATH": "C:\\Program Files (x86)\\GnuWin32\\bin;C:\\Program Files (x86)\\Arm GNU Toolchain arm-none-eabi\\12.2 mpacbti-rel1\\bin;C:\\Users\\Vasilis\\picotool\\build\\Release;C:\\Users\\Vasilis\\.cargo\\bin;${env:PATH}"
+        }
+      },
+      "presentation": {
+        "reveal": "silent",
+        "close": true
+      },
+      "problemMatcher": []
+    }
+  ]
+}

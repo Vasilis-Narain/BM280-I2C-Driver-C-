@@ -62,8 +62,12 @@ flash: $(ELF)
 	probe-rs reset --chip $(CHIP)
 
 # Flash and stay attached (RTT output, catches panics/faults).
+# Stream RTT from an already-running target (no flash, no reset).
+attach: $(ELF)
+	probe-rs attach --chip $(CHIP) --always-print-stacktrace --no-timestamps $<
+
 run: $(ELF)
-	probe-rs run --chip $(CHIP) --scan-region 0x20000000 --always-print-stacktrace $<
+	probe-rs run --chip $(CHIP) --always-print-stacktrace --no-timestamps $<
 
 # No probe needed: hold BOOTSEL, plug in, then copy the UF2 to the
 # RP2350 mass-storage volume. Set DRIVE= to your mounted drive letter.
@@ -77,5 +81,5 @@ clean:
 print-%:
 	@echo '$* = $($*)'
 
-.PHONY: all flash run uf2 clean print-%
+.PHONY: all flash run attach uf2 clean print-%
 -include $(DEPS)

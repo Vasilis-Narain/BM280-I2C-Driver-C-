@@ -1,0 +1,76 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "i2c: OpenOCD (Pico extension)",
+      "type": "cortex-debug",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "executable": "${workspaceFolder}/build/firmware.elf",
+      "servertype": "openocd",
+      "serverpath": "${command:raspberry-pi-pico.getOpenOCDRoot}/openocd.exe",
+      "gdbPath": "${command:raspberry-pi-pico.getGDBPath}",
+      "searchDir": [
+        "${command:raspberry-pi-pico.getOpenOCDRoot}/scripts"
+      ],
+      "configFiles": [
+        "interface/cmsis-dap.cfg",
+        "target/rp2350.cfg"
+      ],
+      "openOCDLaunchCommands": [
+        "adapter speed 5000"
+      ],
+      "svdFile": "C:/Users/Vasilis/pico-sdk/src/rp2350/hardware_regs/RP2350.svd",
+      "preLaunchTask": "make",
+      "runToEntryPoint": "main",
+      "postDebugTask": "reset target",
+      "rttConfig": {
+        "enabled": true,
+        "address": "0x20000000",
+        "searchSize": 16,
+        "searchId": "SEGGER RTT",
+        "polling_interval": 10,
+        "decoders": [
+          {
+            "label": "RTT",
+            "port": 0,
+            "type": "console"
+          }
+        ]
+      }
+    },
+    {
+      "name": "i2c: OpenOCD attach (no flash)",
+      "type": "cortex-debug",
+      "request": "attach",
+      "cwd": "${workspaceFolder}",
+      "executable": "${workspaceFolder}/build/firmware.elf",
+      "servertype": "openocd",
+      "serverpath": "${command:raspberry-pi-pico.getOpenOCDRoot}/openocd.exe",
+      "gdbPath": "${command:raspberry-pi-pico.getGDBPath}",
+      "searchDir": [
+        "${command:raspberry-pi-pico.getOpenOCDRoot}/scripts"
+      ],
+      "configFiles": [
+        "interface/cmsis-dap.cfg",
+        "target/rp2350.cfg"
+      ],
+      "svdFile": "C:/Users/Vasilis/pico-sdk/src/rp2350/hardware_regs/RP2350.svd",
+      "postDebugTask": "reset target",
+      "rttConfig": {
+        "enabled": true,
+        "address": "0x20000000",
+        "searchSize": 16,
+        "searchId": "SEGGER RTT",
+        "polling_interval": 10,
+        "decoders": [
+          {
+            "label": "RTT",
+            "port": 0,
+            "type": "console"
+          }
+        ]
+      }
+    }
+  ]
+}
