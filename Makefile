@@ -21,7 +21,7 @@ INCS := -Iinclude \
 
 CPUFLAGS := -mcpu=cortex-m33 -mthumb -mfloat-abi=soft
 CFLAGS   := $(CPUFLAGS) -std=gnu17 -Og -g3 -Wall -Wextra -ffreestanding \
-            -ffunction-sections -fdata-sections $(INCS)
+            -ffunction-sections -fno-tree-loop-distribute-patterns -fdata-sections $(INCS)
 LDFLAGS  := $(CPUFLAGS) -T$(LDSCRIPT) -nostdlib -Wl,--gc-sections \
             -Wl,-Map=$(BUILD)/$(TARGET).map
 

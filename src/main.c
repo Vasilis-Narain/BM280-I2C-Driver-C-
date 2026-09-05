@@ -86,6 +86,10 @@ void resets_clear(u32 mask) {
 
 void main() {
 
+    rtt_writer writer = {
+        .current_size = 0,
+    };
+
     // Always first clear reset bits for desired functionalities.
     // In this case: iobank, padsbank, i2c
     resets_clear(RESETS_CLEAR);
@@ -101,29 +105,35 @@ void main() {
     // Pads bank -> configure pads for led
     hw_clear_bits(&pads_bank0_hw->io[PIN25], PADS_BANK0_GPIO0_ISO_BITS);
 
-    rtt_print("\nRTT OK...\n", 0);
+    rtt_writeAll(&writer, "\nRTT OK\n");
     i2c_init_master();
 
     bme280_calib_tp tp_params;
     get_tp_params(&tp_params);
 
-    rtt_print("\n...printing tp_params:\n", 0);
+    rtt_writeAll(&writer, "\n...printing tp_params:\n");
     u16 *tmp = (u16 *)&tp_params;
     for (u8 i = 0; i < 12; i++) {
-        rtt_print_hex_u16(*tmp++, 0);
+        if (i == 0 || i == 3) {
+            rtt_print_hex(&writer, uint16, (int_union)(*tmp++));
+        } else {
+            rtt_print_hex(&writer, int16, (int_union)(*tmp++));
+        }
     }
 
     bme280_calib_hum hum_params;
     get_hum_params(&hum_params);
 
-    rtt_print("\n...printing hum_params:\n", 0);
-    rtt_print_hex_u8(hum_params.dig_h1, 0);
-    rtt_print_hex_u16(hum_params.dig_h2, 0);
-    rtt_print_hex_u8(hum_params.dig_h3, 0);
-    //TODO(vasilis): wrong assumption for dig_h4 dig_h5! Not byte aligned
-    rtt_print_hex_u16(hum_params.dig_h4, 0);
-    rtt_print_hex_u16(hum_params.dig_h5, 0);
-    rtt_print_hex_u8(hum_params.dig_h6, 0);
+    rtt_writeAll(&writer, "\n...printing hum_params:\n");
+    rtt_print_hex(&writer, uint8, (int_union)hum_params.dig_h1);
+    rtt_print_hex(&writer, int16, (int_union)hum_params.dig_h2);
+    rtt_print_hex(&writer, uint8, (int_union)hum_params.dig_h3);
+
+    rtt_print_hex(&writer, int16, (int_union)hum_params.dig_h4);
+    rtt_print_hex(&writer, int16, (int_union)hum_params.dig_h5);
+    rtt_print_hex(&writer, int8, (int_union)hum_params.dig_h6);
+
+    rtt_flush(&writer);
 
     sio_hw->gpio_oe_set = 1 << PIN25; // output enable SIO reg. Atomic set.
     for (;;) {

@@ -20,3 +20,6 @@ _Static_assert(sizeof(u8) == 1 && sizeof(u16) == 2 && sizeof(u32) == 4 && sizeof
 _Static_assert(sizeof(i8) == 1 && sizeof(i16) == 2 && sizeof(i32) == 4 && sizeof(i64) == 8, "signed widths");
 _Static_assert((i8)-1 < 0 && (i32)-1 < 0, "signed types must be signed");
 _Static_assert(sizeof(f32) == 4 && sizeof(f64) == 8, "float widths");
+
+void *memcpy(void *dest, const void *src, i32 n);
+void *memset(void *blk, int c, i32 n);

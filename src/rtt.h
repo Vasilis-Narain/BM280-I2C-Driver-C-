@@ -8,9 +8,27 @@
 #define RTT_READ_CHANNEL 0
 #endif
 
-#define RTT_HEX32_LEN 10 // "0x" + 8 digits
-#define RTT_HEX16_LEN 6  // "0x" + 4 digits
-#define RTT_HEX8_LEN 4   // "0x" + 2 digits
+#define RTT_HEX_U32_LEN 10 // "0x" + 8 digits
+#define RTT_HEX_U16_LEN 6  // "0x" + 4 digits
+#define RTT_HEX_U8_LEN 4   // "0x" + 2 digits
+#define RTT_HEX_I32_LEN 11 // "-0x" + 8 digits
+#define RTT_HEX_I16_LEN 7  // "-0x" + 4 digits
+#define RTT_HEX_I8_LEN 5   // "-0x" + 2 digits
+
+#define GET_SIGN_0 U
+#define GET_SIGN_1 I
+
+#define GET_SIGN_8 U  // u8
+#define GET_SIGN_9 I  // i8
+#define GET_SIGN_16 U // u16
+#define GET_SIGN_17 I // i16
+#define GET_SIGN_32 U // u32
+#define GET_SIGN_33 I // i32
+
+#define CONCAT_4_HIDDEN(a, b, c, d) a##b##c##d
+#define CONCAT_4(a, b, c, d) CONCAT_4_HIDDEN(a, b, c, d)
+
+#define HEX_LEN(is_signed, size) CONCAT_4(RTT_HEX_, GET_SIGN_##is_signed, size, _LEN)
 
 #ifndef RTT_MAX_NUM_UP_BUFFERS
 #define RTT_MAX_NUM_UP_BUFFERS (1)
@@ -85,8 +103,37 @@ u32 rtt_read(char *buf, u32 max, u8 channel);
 b32 rtt_print_hex_u32(u32 num, u8 channel);
 b32 rtt_print_hex_u16(u16 num, u8 channel);
 b32 rtt_print_hex_u8(u8 num, u8 channel);
-void u32_to_hex(u32 num, char out[RTT_HEX32_LEN]);
-void u16_to_hex(u16 num, char out[RTT_HEX16_LEN]);
-void u8_to_hex(u8 num, char out[RTT_HEX8_LEN]);
+void u32_to_hex(u32 num, char out[HEX_LEN(0, 32)]);
+void u16_to_hex(u16 num, char out[HEX_LEN(0, 16)]);
+void u8_to_hex(u8 num, char out[HEX_LEN(0, 8)]);
 
-#define rtt_print(s, ch) rtt_write("" s, sizeof("" s) - 1, ch)
+#define rtt_err(s) rtt_write("ERR::" s, sizeof("ERR::" s) - 1, RTT_WRITE_CHANNEL)
+
+typedef enum {
+    uint8,
+    uint16,
+    uint32,
+
+    int8,
+    int16,
+    int32,
+} int_type;
+
+typedef union {
+    u8 uint8;
+    u16 uint16;
+    u32 uint32;
+    i8 int8;
+    i16 int16;
+    i32 int32;
+} int_union;
+
+typedef struct {
+    char buf[RTT_BUFFER_SIZE_UP];
+    u32 current_size;
+} rtt_writer;
+
+i32 rtt_print_hex(rtt_writer *writer, int_type t, int_union num);
+i32 rtt_print(rtt_writer *writer, const char *str, u32 length);
+void rtt_flush(rtt_writer *writer);
+#define rtt_writeAll(writer, s) rtt_print(writer, "" s, sizeof("" s) - 1)

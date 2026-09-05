@@ -23,7 +23,7 @@ void i2c_init_master() {
     // The following numbers calculated from specification formulas for 12Mhz clk_sys
     // lcnt and hcnt ar ic_clk settings
     //
-    // TODO(vasilis): calculate these at comptime
+    // TODO(vasilis): calculate these at comptime rather than hardcode
     //
     i2c_hw->ss_scl_hcnt = 48;
     i2c_hw->ss_scl_lcnt = 72;
@@ -37,19 +37,31 @@ b32 get_tp_params(bme280_calib_tp *tp_params) {
     u32 length = sizeof(*tp_params);
     u8 start_addr = 0x88;
     if (bulk_read_command(start_addr, (u8 *)tp_params, length) != 0) {
-        rtt_print("i2c: transfer aborted\n", RTT_WRITE_CHANNEL);
+        rtt_err("i2c: transfer aborted\n");
         return 1;
     }
     return 0;
 }
 
 b32 get_hum_params(bme280_calib_hum *hum_params) {
+    //TODO(vasilis): wrong assumption for dig_h4 dig_h5! Not byte aligned
     read_command(0xa1, &hum_params->dig_h1);
-    u32 length = sizeof(*hum_params) - 1;
-    if (bulk_read_command(0xe1, (u8 *)&hum_params->dig_h2, length) != 0) {
-        rtt_print("i2c: transfer aborted\n", RTT_WRITE_CHANNEL);
+
+    u32 length = sizeof(*hum_params) - 2;
+    u8 buff[length];
+
+    if (bulk_read_command(0xe1, buff, length) != 0) {
+        rtt_err("i2c: transfer aborted\n");
         return 1;
     }
+
+    hum_params->dig_h2 = COMBINE_I16(buff[0], buff[1]);
+    hum_params->dig_h3 = buff[3];
+
+    hum_params->dig_h4 = (i16)((buff[4] << 4) | (buff[5] & 0x7));         // 0b111 = 0x7
+    hum_params->dig_h5 = (i16)(((buff[5] & 0x38) >> 3) | (buff[6] << 4)); // 0b111000 = 0x38
+
+    hum_params->dig_h3 = (i8)buff[7];
     return 0;
 }
 

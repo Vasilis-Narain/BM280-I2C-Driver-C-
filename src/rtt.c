@@ -5,6 +5,9 @@ static u16 spread16(u8 num);
 static u32 spread32(u16 num);
 static void copy16(char *out, u16 num);
 static void copy32(char *out, u32 num);
+static u8 generic_int_to_hex(int_type t, int_union num, char *out);
+static u8 get_int_size(int_type t);
+static b32 is_signed(int_type t);
 
 char rtt_buffer_up[RTT_BUFFER_SIZE_UP];
 char rtt_buffer_down[RTT_BUFFER_SIZE_DOWN];
@@ -35,6 +38,36 @@ rtt_ctrl_block_t __attribute__((used, section(".rtt_cb"))) _SEGGER_RTT = {
         },
     },
 };
+
+#define BUFFER_WAS_FLUSHED -1
+#define BUFFER_NOT_LARGE_ENOUGH_FOR_STRING -2
+
+void rtt_flush(rtt_writer *writer) {
+    rtt_write((const char *)(writer->buf), writer->current_size, RTT_WRITE_CHANNEL);
+    writer->current_size = 0;
+}
+
+i32 rtt_print(rtt_writer *writer, const char *str, u32 length) {
+    i32 ret = 0;
+
+    if (length > RTT_BUFFER_SIZE_UP) {
+        ret = BUFFER_NOT_LARGE_ENOUGH_FOR_STRING;
+        return ret;
+    }
+
+    u32 current_index = writer->current_size;
+    if (current_index + length > RTT_BUFFER_SIZE_UP) {
+        rtt_flush(writer);
+        ret = BUFFER_WAS_FLUSHED;
+    }
+
+    for (u32 i = 0; i < length; i++) {
+        writer->buf[current_index++] = str[i];
+    }
+    writer->current_size = current_index;
+
+    return ret;
+}
 
 b32 rtt_write(const char *str, u32 len, u8 channel) {
     u32 wr_idx = _SEGGER_RTT.aUp[channel].WrOff;
@@ -90,26 +123,37 @@ u32 rtt_read(char *buf, u32 max, u8 channel) {
     return num_bytes_processed;
 }
 
-b32 rtt_print_hex_u32(u32 num, u8 channel) {
-    char buf[RTT_HEX32_LEN + 1];
-    u32_to_hex(num, buf);
-    buf[RTT_HEX32_LEN] = '\n';
-    b32 res = rtt_write(buf, sizeof(buf), channel);
+i32 rtt_print_hex(rtt_writer *writer, int_type t, int_union num) {
+    char buf[32];
+    u8 size = generic_int_to_hex(t, num, buf);
+    buf[size] = '\n';
+    return rtt_print(writer, (const char *)buf, size + 1);
+}
+
+static u8 get_int_size(int_type t) {
+    u8 res = 0;
+    switch (t) {
+    case uint8:
+        res = HEX_LEN(0, 8);
+        break;
+    case uint16:
+        res = HEX_LEN(0, 16);
+        break;
+    case uint32:
+        res = HEX_LEN(0, 32);
+        break;
+
+    case int8:
+        res = HEX_LEN(1, 8);
+        break;
+    case int16:
+        res = HEX_LEN(1, 16);
+        break;
+    case int32:
+        res = HEX_LEN(1, 32);
+        break;
+    }
     return res;
-}
-
-b32 rtt_print_hex_u16(u16 num, u8 channel) {
-    char buf[RTT_HEX16_LEN + 1];
-    u16_to_hex(num, buf);
-    buf[RTT_HEX16_LEN] = '\n';
-    return rtt_write(buf, sizeof(buf), channel);
-}
-
-b32 rtt_print_hex_u8(u8 num, u8 channel) {
-    char buf[RTT_HEX8_LEN + 1];
-    u8_to_hex(num, buf);
-    buf[RTT_HEX8_LEN] = '\n';
-    return rtt_write(buf, sizeof(buf), channel);
 }
 
 // Following functions are to convert a uint*_t to a hex string.
@@ -120,23 +164,103 @@ b32 rtt_print_hex_u8(u8 num, u8 channel) {
 //
 // Modified from https://johnnylee-sde.github.io/Fast-unsigned-integer-to-hex-string/
 //
-void u32_to_hex(u32 num, char out[RTT_HEX32_LEN]) {
+static b32 _32_to_hex(int_type t, int_union num, char out[HEX_LEN(0, 32)]) {
     out[0] = '0';
     out[1] = 'x';
-    copy32(out + 2, spread32((u16)(num >> 16)));
-    copy32(out + 6, spread32((u16)(num)));
+
+    u32 bits;
+    if (t == int32) {
+        bits = (num.int32 < 0) ? (0u - (u32)num.int32) : (u32)num.int32;
+
+    } else if (t == uint32) {
+        bits = num.uint32;
+    } else {
+        return -1;
+    }
+
+    copy32(out + 2, spread32((u16)(bits >> 16)));
+    copy32(out + 6, spread32((u16)(bits)));
+    return 0;
 }
 
-void u16_to_hex(u16 num, char out[RTT_HEX16_LEN]) {
+static b32 _16_to_hex(int_type t, int_union num, char out[HEX_LEN(0, 16)]) {
     out[0] = '0';
     out[1] = 'x';
-    copy32(out + 2, spread32(num));
+
+    if (t == int16) {
+        u16 mag = (num.int16 < 0) ? (u16)(0u - (u32)(u16)num.int16) : (u16)num.int16;
+        copy32(out + 2, spread32(mag));
+    } else if (t == uint16) {
+        copy32(out + 2, spread32(num.uint16));
+    } else {
+        return -1;
+    }
+    return 0;
 }
 
-void u8_to_hex(u8 num, char out[RTT_HEX8_LEN]) {
+static b32 _8_to_hex(int_type t, int_union num, char out[HEX_LEN(0, 8)]) {
     out[0] = '0';
     out[1] = 'x';
-    copy16(out + 2, spread16(num));
+
+    if (t == int8) {
+        u8 mag = (num.int8 < 0) ? (u8)(0u - (u32)(u8)num.int8) : (u8)num.int8;
+        copy16(out + 2, spread16(mag));
+    } else if (t == uint8) {
+        copy16(out + 2, spread16(num.uint8));
+    } else {
+        return -1;
+    }
+    return 0;
+}
+
+static u8 generic_int_to_hex(int_type t, int_union num, char *out) {
+    char *start = out;
+
+    switch (t) {
+    case uint8:
+    case uint16:
+    case uint32:
+        break;
+
+    case int8:
+        if (num.int8 < 0) {
+            *out++ = '-';
+        }
+        break;
+    case int16:
+        if (num.int16 < 0) {
+            *out++ = '-';
+        }
+        break;
+    case int32:
+        if (num.int32 < 0) {
+            *out++ = '-';
+        }
+        break;
+    }
+
+    switch (t) {
+    case uint8:
+    case int8:
+        _8_to_hex(t, num, out);
+        break;
+    case uint16:
+    case int16:
+        _16_to_hex(t, num, out);
+        break;
+    case uint32:
+    case int32:
+        _32_to_hex(t, num, out);
+        break;
+    }
+
+    // Unsigned lengths: the sign char, when emitted, is already counted by
+    // (out - start), so this yields the exact number of chars written.
+    return (u8)((out - start) + get_int_size(t) - (is_signed(t) ? 1 : 0));
+}
+
+static b32 is_signed(int_type t) {
+    return (t == int8) || (t == int16) || (t == int32);
 }
 
 static u32 spread32(u16 num) {
