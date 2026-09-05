@@ -156,14 +156,6 @@ static u8 get_int_size(int_type t) {
     return res;
 }
 
-// Following functions are to convert a uint*_t to a hex string.
-//
-// ! Does not add a null terminator !
-//
-// No efort has been done to make this safe. It's probably not.
-//
-// Modified from https://johnnylee-sde.github.io/Fast-unsigned-integer-to-hex-string/
-//
 static b32 _32_to_hex(int_type t, int_union num, char out[HEX_LEN(0, 32)]) {
     out[0] = '0';
     out[1] = 'x';
@@ -263,6 +255,26 @@ static b32 is_signed(int_type t) {
     return (t == int8) || (t == int16) || (t == int32);
 }
 
+static void copy32(char *out, u32 num) {
+    out[0] = (char)(num >> 0);
+    out[1] = (char)(num >> 8);
+    out[2] = (char)(num >> 16);
+    out[3] = (char)(num >> 24);
+}
+
+static void copy16(char *out, u16 num) {
+    out[0] = (char)(num >> 0);
+    out[1] = (char)(num >> 8);
+}
+
+// Following functions are to convert a uint*_t to a hex string.
+//
+// ! Does not add a null terminator !
+//
+// No efort has been done to make this safe. It's probably not.
+//
+// Modified from https://johnnylee-sde.github.io/Fast-unsigned-integer-to-hex-string/
+//
 static u32 spread32(u16 num) {
     u32 x = num;
     x = ((x & 0x00FF) << 16) | ((x & 0xFF00) >> 8);
@@ -278,16 +290,4 @@ static u16 spread16(u8 num) {
 
     u32 m = ((x + 0x0606) >> 4) & 0x0101;
     return x + 0x3030 + m * 39;
-}
-
-static void copy32(char *out, u32 num) {
-    out[0] = (char)(num >> 0);
-    out[1] = (char)(num >> 8);
-    out[2] = (char)(num >> 16);
-    out[3] = (char)(num >> 24);
-}
-
-static void copy16(char *out, u16 num) {
-    out[0] = (char)(num >> 0);
-    out[1] = (char)(num >> 8);
 }
