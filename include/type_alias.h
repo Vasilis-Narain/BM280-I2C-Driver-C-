@@ -1,6 +1,8 @@
 #pragma once
 #include <stdint.h>
 
+typedef __SIZE_TYPE__ usize;
+
 typedef uint8_t u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
@@ -21,5 +23,5 @@ _Static_assert(sizeof(i8) == 1 && sizeof(i16) == 2 && sizeof(i32) == 4 && sizeof
 _Static_assert((i8)-1 < 0 && (i32)-1 < 0, "signed types must be signed");
 _Static_assert(sizeof(f32) == 4 && sizeof(f64) == 8, "float widths");
 
-void *memcpy(void *dest, const void *src, i32 n);
-void *memset(void *blk, int c, i32 n);
+void *memcpy(void *dest, const void *src, usize n); // provide own implementations
+void *memset(void *blk, i32 c, usize n);            // provide own implementation

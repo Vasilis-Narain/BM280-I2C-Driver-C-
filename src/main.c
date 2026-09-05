@@ -86,9 +86,7 @@ void resets_clear(u32 mask) {
 
 void main() {
 
-    rtt_writer writer = {
-        .current_size = 0,
-    };
+    rtt_writer writer = {0};
 
     // Always first clear reset bits for desired functionalities.
     // In this case: iobank, padsbank, i2c
