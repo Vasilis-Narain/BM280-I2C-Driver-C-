@@ -100,9 +100,6 @@ extern rtt_ctrl_block_t _SEGGER_RTT;
 
 b32 rtt_write(const char *str, u32 len, u8 channel);
 u32 rtt_read(char *buf, u32 max, u8 channel);
-b32 rtt_print_hex_u32(u32 num, u8 channel);
-b32 rtt_print_hex_u16(u16 num, u8 channel);
-b32 rtt_print_hex_u8(u8 num, u8 channel);
 void u32_to_hex(u32 num, char out[HEX_LEN(0, 32)]);
 void u16_to_hex(u16 num, char out[HEX_LEN(0, 16)]);
 void u8_to_hex(u8 num, char out[HEX_LEN(0, 8)]);
@@ -128,12 +125,17 @@ typedef union {
     i32 int32;
 } int_union;
 
+typedef enum {
+    FMT_HEX,
+    FMT_DEC,
+} rtt_fmt_int;
+
 typedef struct {
     char buf[RTT_BUFFER_SIZE_UP];
     u32 current_size;
 } rtt_writer;
 
-i32 rtt_print_hex(rtt_writer *writer, int_type t, int_union num);
+i32 rtt_print_int(rtt_writer *writer, int_type t, int_union num, rtt_fmt_int fmt);
 i32 rtt_print(rtt_writer *writer, const char *str, u32 length);
 void rtt_flush(rtt_writer *writer);
 #define rtt_writeAll(writer, s) rtt_print(writer, "" s, sizeof("" s) - 1)

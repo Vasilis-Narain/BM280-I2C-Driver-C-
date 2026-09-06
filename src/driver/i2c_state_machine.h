@@ -8,6 +8,8 @@
 #define I2C_RESTART_READ_MASK (I2C_IC_DATA_CMD_CMD_BITS | I2C_IC_DATA_CMD_RESTART_BITS)
 #define I2C_RESTART_READ_STOP_MASK (I2C_IC_DATA_CMD_CMD_BITS | I2C_IC_DATA_CMD_RESTART_BITS | I2C_IC_DATA_CMD_STOP_BITS)
 
+#define BME280_LEN_TEMP_PRESS_CALIB 24
+
 #ifndef SDA_PIN
 #define SDA_PIN 14
 #endif
@@ -71,7 +73,7 @@
 #define PADS_I2C_SET (PADS_BANK0_GPIO0_IE_BITS)
 
 void i2c_init_master();
-b32 bulk_read_command(u8 start_address, u8 *buffer, u32 length);
+b32 i2c_blocking_bulk_read_command(u8 start_address, u8 *buffer, u32 length);
 b32 get_tp_params(bme280_calib_tp *tp_params);
-void read_command(u8 address, u8 *byte);
+void i2c_blocking_read_command(u8 address, u8 *byte);
 b32 get_hum_params(bme280_calib_hum *hum_params);

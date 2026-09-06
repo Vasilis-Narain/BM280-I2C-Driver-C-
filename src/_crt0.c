@@ -3,6 +3,7 @@
 #include <hardware/structs/clocks.h>
 #include <hardware/regs/clocks.h>
 #include <hardware/structs/xosc.h>
+#include <hardware/structs/scb.h>
 
 extern u8 __data_start;
 extern u8 __data_end;
@@ -13,6 +14,7 @@ extern u8 __bss_end;
 // Functions provided
 static void _config_ref_clock();
 static void _config_sys_clock();
+static void _enable_fpu();
 
 // Functions needed
 extern void main();
@@ -20,6 +22,7 @@ extern void main();
 void _crt0() {
     _config_sys_clock();
     _config_ref_clock();
+    _enable_fpu();
 
     // Copy data segment
     u8 *dest = &__data_start;
@@ -61,4 +64,10 @@ static void _config_sys_clock() {
 
     hw_clear_bits(&clocks_hw->clk[clk_sys].ctrl, CLOCKS_CLK_SYS_CTRL_SRC_BITS);
     while (!(clocks_hw->clk[clk_sys].selected & (1 << CLOCKS_CLK_SYS_CTRL_SRC_VALUE_CLK_REF))) {}
+}
+
+static void _enable_fpu() {
+    scb_hw->cpacr |= M33_CPACR_CP10_BITS | M33_CPACR_CP11_BITS;
+
+    __asm__ volatile("dsb; isb");
 }

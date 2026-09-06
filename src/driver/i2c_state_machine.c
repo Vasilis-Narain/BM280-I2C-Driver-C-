@@ -34,9 +34,9 @@ void i2c_init_master() {
 }
 
 b32 get_tp_params(bme280_calib_tp *tp_params) {
-    u32 length = sizeof(*tp_params);
+    u32 length = BME280_LEN_TEMP_PRESS_CALIB;
     u8 start_addr = 0x88;
-    if (bulk_read_command(start_addr, (u8 *)tp_params, length) != 0) {
+    if (i2c_blocking_bulk_read_command(start_addr, (u8 *)tp_params, length) != 0) {
         rtt_err("i2c: transfer aborted\n");
         return 1;
     }
@@ -44,28 +44,26 @@ b32 get_tp_params(bme280_calib_tp *tp_params) {
 }
 
 b32 get_hum_params(bme280_calib_hum *hum_params) {
-    //TODO(vasilis): wrong assumption for dig_h4 dig_h5! Not byte aligned
-    read_command(0xa1, &hum_params->dig_h1);
+    i2c_blocking_read_command(0xa1, &hum_params->dig_h1);
 
-    u32 length = sizeof(*hum_params) - 2;
-    u8 buff[length];
+    u8 buff[BME280_LEN_HUMIDITY_CALIB_DATA];
 
-    if (bulk_read_command(0xe1, buff, length) != 0) {
+    if (i2c_blocking_bulk_read_command(0xe1, buff, sizeof(buff)) != 0) {
         rtt_err("i2c: transfer aborted\n");
         return 1;
     }
 
     hum_params->dig_h2 = COMBINE_I16(buff[0], buff[1]);
-    hum_params->dig_h3 = buff[3];
+    hum_params->dig_h3 = buff[2];
 
-    hum_params->dig_h4 = (i16)((buff[4] << 4) | (buff[5] & 0x7));         // 0b111 = 0x7
-    hum_params->dig_h5 = (i16)(((buff[5] & 0x38) >> 3) | (buff[6] << 4)); // 0b111000 = 0x38
+    hum_params->dig_h4 = ((i16)(i8)buff[3] * 16) | (buff[4] & 0x0F);
+    hum_params->dig_h5 = ((i16)(i8)buff[5] * 16) | (buff[4] >> 4);
 
-    hum_params->dig_h3 = (i8)buff[7];
+    hum_params->dig_h6 = (i8)buff[6];
     return 0;
 }
 
-void read_command(u8 address, u8 *byte) {
+void i2c_blocking_read_command(u8 address, u8 *byte) {
     while (!(i2c_hw->status & I2C_IC_STATUS_TFNF_BITS)) {}
     i2c_hw->data_cmd = address;
 
@@ -73,10 +71,10 @@ void read_command(u8 address, u8 *byte) {
     i2c_hw->data_cmd = I2C_IC_DATA_CMD_CMD_BITS | I2C_IC_DATA_CMD_RESTART_BITS | I2C_IC_DATA_CMD_STOP_BITS;
 
     while (i2c_hw->rxflr == 0) {}
-    *byte = i2c_hw->data_cmd | I2C_IC_DATA_CMD_DAT_BITS;
+    *byte = i2c_hw->data_cmd & I2C_IC_DATA_CMD_DAT_BITS;
 }
 
-b32 bulk_read_command(u8 start_address, u8 *buffer, u32 length) {
+b32 i2c_blocking_bulk_read_command(u8 start_address, u8 *buffer, u32 length) {
     while (!(i2c_hw->status & I2C_IC_STATUS_TFNF_BITS)) {}
     i2c_hw->data_cmd = start_address;
 

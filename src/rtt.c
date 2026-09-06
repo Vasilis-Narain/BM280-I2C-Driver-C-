@@ -8,6 +8,8 @@ static void copy32(char *out, u32 num);
 static u8 generic_int_to_hex(int_type t, int_union num, char *out);
 static u8 get_int_size(int_type t);
 static b32 is_signed(int_type t);
+static i32 rtt_print_int_hex(rtt_writer *writer, int_type t, int_union num);
+static i32 rtt_print_int_dec(rtt_writer *writer, int_type t, int_union num);
 
 char rtt_buffer_up[RTT_BUFFER_SIZE_UP];
 char rtt_buffer_down[RTT_BUFFER_SIZE_DOWN];
@@ -123,11 +125,146 @@ u32 rtt_read(char *buf, u32 max, u8 channel) {
     return num_bytes_processed;
 }
 
-i32 rtt_print_hex(rtt_writer *writer, int_type t, int_union num) {
-    char buf[32];
-    u8 size = generic_int_to_hex(t, num, buf);
-    buf[size] = '\n';
-    return rtt_print(writer, (const char *)buf, size + 1);
+static const char char_table[201] = {
+    "00010203040506070809"
+    "10111213141516171819"
+    "20212223242526272829"
+    "30313233343536373839"
+    "40414243444546474849"
+    "50515253545556575859"
+    "60616263646566676869"
+    "70717273747576777879"
+    "80818283848586878889"
+    "90919293949596979899",
+};
+
+static const u32 pow_of_10_table[10] = {
+    1u,
+    10u,
+    100u,
+    1000u,
+    10000u,
+    100000u,
+    1000000u,
+    10000000u,
+    100000000u,
+    1000000000u,
+};
+
+u32 count_digits_u32(u32 num) {
+    u32 result = 0;
+
+    while (num >= pow_of_10_table[result]) {
+        result++;
+    }
+
+    return result;
+}
+
+static u32 u32_to_string(u32 num, char *buff) {
+    if (num == 0) {
+        buff[0] = '0';
+        return 1;
+    }
+
+    u32 initial_length = count_digits_u32(num);
+    u32 length = initial_length;
+
+    u32 i = 0;
+    while (length >= 2) {
+        length -= 2;
+        u32 digits = num / pow_of_10_table[length];
+        u32 index = digits * 2;
+        buff[i] = char_table[index];
+        buff[i + 1] = char_table[index + 1];
+        num -= digits * pow_of_10_table[length];
+        i += 2;
+    }
+    if (length == 1) {
+        buff[i] = '0' + num;
+    }
+
+    return initial_length;
+}
+
+static u32 i32_to_string(i32 num, char *buff) {
+    u32 size = 0;
+    u32 mag;
+
+    if (num < 0) {
+        *buff++ = '-';
+        size++;
+        mag = 0u - (u32)num;
+    } else {
+        mag = (u32)num;
+    }
+    size += u32_to_string(mag, buff);
+    return size;
+}
+
+static i32 sign_extend(int_type t, int_union num) {
+    i32 x = num.int32;
+    i32 shift_amount = 0;
+    switch (t) {
+    case int8:
+        shift_amount = 32 - 8;
+        break;
+    case int16:
+        shift_amount = 32 - 16;
+        break;
+    case int32:
+        break;
+    default:
+        rtt_err("sign_extend: reached unreachable code in switch statement!");
+        break;
+    }
+    x = x << shift_amount;
+    x = x >> shift_amount;
+    return x;
+}
+
+i32 rtt_print_int(rtt_writer *writer, int_type t, int_union num, rtt_fmt_int fmt) {
+    switch (fmt) {
+    case FMT_HEX:
+        return rtt_print_int_hex(writer, t, num);
+    case FMT_DEC:
+        return rtt_print_int_dec(writer, t, num);
+    }
+    return 0;
+}
+
+static i32 rtt_print_int_dec(rtt_writer *writer, int_type t, int_union num) {
+    char buff[25];
+    u32 size = 0;
+    if (is_signed(t)) {
+        i32 sign_extended = sign_extend(t, num);
+        size = i32_to_string(sign_extended, buff);
+    } else {
+        u32 value = 0;
+        switch (t) {
+        case uint8:
+            value = (u32)num.uint8;
+            break;
+        case uint16:
+            value = (u32)num.uint16;
+            break;
+        case uint32:
+            value = num.uint32;
+            break;
+        default:
+            break;
+        }
+        size = u32_to_string(value, buff);
+    }
+    buff[size] = '\n';
+    return rtt_print(writer, (const char *)buff, size + 1);
+}
+
+static i32 rtt_print_int_hex(rtt_writer *writer, int_type t, int_union num) {
+    char buff[32];
+    u8 size = generic_int_to_hex(t, num, buff);
+    buff[size] = '\n';
+    return rtt_print(writer, (const char *)buff, size + 1);
 }
 
 static u8 get_int_size(int_type t) {
@@ -268,10 +405,6 @@ static void copy16(char *out, u16 num) {
 }
 
 // Following functions are to convert a uint*_t to a hex string.
-//
-// ! Does not add a null terminator !
-//
-// No efort has been done to make this safe. It's probably not.
 //
 // Modified from https://johnnylee-sde.github.io/Fast-unsigned-integer-to-hex-string/
 //

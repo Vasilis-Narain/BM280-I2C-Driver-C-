@@ -113,9 +113,9 @@ void main() {
     u16 *tmp = (u16 *)&tp_params;
     for (u8 i = 0; i < 12; i++) {
         if (i == 0 || i == 3) {
-            rtt_print_hex(&writer, uint16, (int_union)(*tmp++));
+            rtt_print_int(&writer, uint16, (int_union)(*tmp++), FMT_DEC);
         } else {
-            rtt_print_hex(&writer, int16, (int_union)(*tmp++));
+            rtt_print_int(&writer, int16, (int_union)(*tmp++), FMT_DEC);
         }
     }
 
@@ -123,13 +123,12 @@ void main() {
     get_hum_params(&hum_params);
 
     rtt_writeAll(&writer, "\n...printing hum_params:\n");
-    rtt_print_hex(&writer, uint8, (int_union)hum_params.dig_h1);
-    rtt_print_hex(&writer, int16, (int_union)hum_params.dig_h2);
-    rtt_print_hex(&writer, uint8, (int_union)hum_params.dig_h3);
-
-    rtt_print_hex(&writer, int16, (int_union)hum_params.dig_h4);
-    rtt_print_hex(&writer, int16, (int_union)hum_params.dig_h5);
-    rtt_print_hex(&writer, int8, (int_union)hum_params.dig_h6);
+    rtt_print_int(&writer, uint8, (int_union)hum_params.dig_h1, FMT_DEC);
+    rtt_print_int(&writer, int16, (int_union)hum_params.dig_h2, FMT_DEC);
+    rtt_print_int(&writer, uint8, (int_union)hum_params.dig_h3, FMT_DEC);
+    rtt_print_int(&writer, int16, (int_union)hum_params.dig_h4, FMT_DEC);
+    rtt_print_int(&writer, int16, (int_union)hum_params.dig_h5, FMT_DEC);
+    rtt_print_int(&writer, int8, (int_union)hum_params.dig_h6, FMT_DEC);
 
     rtt_flush(&writer);
 

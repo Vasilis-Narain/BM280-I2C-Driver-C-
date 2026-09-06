@@ -22,10 +22,12 @@ typedef struct {
 
 typedef struct {
     u8 dig_h1;
+    u8 _pad1;
     i16 dig_h2;
     u8 dig_h3;
+    u8 _pad2;
     i16 dig_h4;
     i16 dig_h5;
     i8 dig_h6;
-
+    u8 _pad3;
 } bme280_calib_hum;
