@@ -41,6 +41,7 @@ rtt_ctrl_block_t __attribute__((used, section(".rtt_cb"))) _SEGGER_RTT = {
     },
 };
 
+// Error codes
 #define BUFFER_WAS_FLUSHED -1
 #define BUFFER_NOT_LARGE_ENOUGH_FOR_STRING -2
 
