@@ -37,7 +37,6 @@ b32 get_tp_params(bme280_calib_tp *tp_params) {
     u32 length = BME280_LEN_TEMP_PRESS_CALIB;
     u8 start_addr = 0x88;
     if (i2c_blocking_bulk_read_command(start_addr, (u8 *)tp_params, length) != 0) {
-        rtt_err("i2c: transfer aborted\n");
         return 1;
     }
     return 0;
@@ -49,7 +48,6 @@ b32 get_hum_params(bme280_calib_hum *hum_params) {
     u8 buff[BME280_LEN_HUMIDITY_CALIB_DATA];
 
     if (i2c_blocking_bulk_read_command(0xe1, buff, sizeof(buff)) != 0) {
-        rtt_err("i2c: transfer aborted\n");
         return 1;
     }
 

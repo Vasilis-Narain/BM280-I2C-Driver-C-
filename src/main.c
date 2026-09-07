@@ -86,7 +86,9 @@ void resets_clear(u32 mask) {
 
 void main() {
 
-    rtt_writer writer = {0};
+    Writer writer = {
+        ._flush = rtt_flush,
+    };
 
     // Always first clear reset bits for desired functionalities.
     // In this case: iobank, padsbank, i2c
@@ -103,34 +105,40 @@ void main() {
     // Pads bank -> configure pads for led
     hw_clear_bits(&pads_bank0_hw->io[PIN25], PADS_BANK0_GPIO0_ISO_BITS);
 
-    rtt_writeAll(&writer, "\nRTT OK\n");
+    write_all(&writer, "\nRTT OK\n");
     i2c_init_master();
 
     bme280_calib_tp tp_params;
     get_tp_params(&tp_params);
 
-    rtt_writeAll(&writer, "\n...printing tp_params:\n");
+    write_all(&writer, "\n...printing tp_params:\n");
     u16 *tmp = (u16 *)&tp_params;
     for (u8 i = 0; i < 12; i++) {
         if (i == 0 || i == 3) {
-            rtt_print_int(&writer, uint16, (int_union)(*tmp++), FMT_DEC);
+            print(&writer, "We're printing a uint16: {d:us}\n", *tmp++);
         } else {
-            rtt_print_int(&writer, int16, (int_union)(*tmp++), FMT_DEC);
+            print(&writer, "We're printing a int16: {d:is}\n", *tmp++);
         }
     }
 
     bme280_calib_hum hum_params;
     get_hum_params(&hum_params);
 
-    rtt_writeAll(&writer, "\n...printing hum_params:\n");
-    rtt_print_int(&writer, uint8, (int_union)hum_params.dig_h1, FMT_DEC);
-    rtt_print_int(&writer, int16, (int_union)hum_params.dig_h2, FMT_DEC);
-    rtt_print_int(&writer, uint8, (int_union)hum_params.dig_h3, FMT_DEC);
-    rtt_print_int(&writer, int16, (int_union)hum_params.dig_h4, FMT_DEC);
-    rtt_print_int(&writer, int16, (int_union)hum_params.dig_h5, FMT_DEC);
-    rtt_print_int(&writer, int8, (int_union)hum_params.dig_h6, FMT_DEC);
+    write_all(&writer, "\n...printing hum_params:\n");
+    tmp = (u16 *)&hum_params;
+    // NOTE(vasilis): this doesnt actually print the 'correct' bytes
+    // its here to test the printing function itself.
+    for (u32 i = 0; i < 6; i++) {
+        if (i == 0 || i == 2) {
+            print(&writer, "We're printing a uint8: {x:ub}\n", *tmp++);
+        } else if (i == 5) {
+            print(&writer, "We're printing a int8: {x:ub}\n", *tmp++);
+        } else {
+            print(&writer, "We're printing a int16: {x:is}\n", *tmp++);
+        }
+    }
 
-    rtt_flush(&writer);
+    flush(&writer);
 
     sio_hw->gpio_oe_set = 1 << PIN25; // output enable SIO reg. Atomic set.
     for (;;) {
