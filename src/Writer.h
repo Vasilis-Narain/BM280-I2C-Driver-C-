@@ -47,8 +47,8 @@ typedef enum {
 } int_type;
 
 typedef enum {
-    UNSIGN,
-    SIGN,
+    UNSIGNED,
+    SIGNED,
 } signedness;
 
 typedef enum {

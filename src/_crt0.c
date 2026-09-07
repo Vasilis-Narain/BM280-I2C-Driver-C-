@@ -11,12 +11,10 @@ extern u8 __data_lma;
 extern u8 __bss_start;
 extern u8 __bss_end;
 
-// Functions provided
 static void _config_ref_clock();
 static void _config_sys_clock();
 static void _enable_fpu();
 
-// Functions needed
 extern void main();
 
 void _crt0() {

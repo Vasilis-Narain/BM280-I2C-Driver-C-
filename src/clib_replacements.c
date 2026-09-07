@@ -1,4 +1,5 @@
 #include <type_alias.h>
+
 void *memcpy(void *dest, const void *src, usize n) {
     u32 i;
 

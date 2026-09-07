@@ -107,9 +107,9 @@ i32 writer_print(Writer *writer, const char *fmt, u32 length, ...) {
                 signedness sign;
                 c = next(&fmt, end);
                 if (c == 'u') {
-                    sign = UNSIGN;
+                    sign = UNSIGNED;
                 } else if (c == 'i') {
-                    sign = SIGN;
+                    sign = SIGNED;
                 } else {
                     ERROR_HANDLER();
                 }
@@ -194,12 +194,12 @@ static i32 print_int_hex(Writer *writer, int_type t, int_union num) {
     return writer_write(writer, (const char *)buff, size);
 }
 
+// NOTE(vasilis): this will break if we change the int_type enum. So we won't
 static int_type get_type(signedness sign, size s) {
     i32 offset = 0;
-    if (sign == SIGN) {
+    if (sign == SIGNED) {
         offset = 3;
     }
-
     return offset + s;
 }
 
@@ -289,7 +289,7 @@ static u32 i32_to_string(i32 num, char *buff) {
 }
 
 static i32 sign_extend(int_type t, int_union num) {
-    i32 x = num.int32;
+    i32 x = num.int32; // The shifts under should handle uninitialized bits
     i32 shift_amount = 0;
     switch (t) {
     case int8:
