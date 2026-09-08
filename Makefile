@@ -20,7 +20,7 @@ INCS := -Iinclude \
         -I$(SDK)/rp2350/hardware_regs/include
 
 CPUFLAGS := -mcpu=cortex-m33 -mthumb -mfloat-abi=hard -mfpu=fpv5-sp-d16
-CFLAGS   := $(CPUFLAGS) -std=gnu17 -Og -g3 -Wall -Wextra -ffreestanding \
+CFLAGS   := $(CPUFLAGS) -std=gnu17 -O2 -g3 -Wall -Wextra -ffreestanding \
             -ffunction-sections -fno-tree-loop-distribute-patterns -fdata-sections $(INCS)
 LDFLAGS  := $(CPUFLAGS) -T$(LDSCRIPT) -nostdlib -Wl,--gc-sections \
             -Wl,-Map=$(BUILD)/$(TARGET).map

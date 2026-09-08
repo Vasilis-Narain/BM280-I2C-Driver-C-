@@ -5,7 +5,7 @@
 #include <stdarg.h>
 
 #ifndef WRITER_MAX_BUFFER_SIZE
-#define WRITER_MAX_BUFFER_SIZE 1024
+#define WRITER_MAX_BUFFER_SIZE 256
 #endif
 
 #define HEX_U32_LEN 10 // "0x" + 8 digits
@@ -92,5 +92,5 @@ void writer_write_char(Writer *writer, char c);
 i32 writer_print(Writer *writer, const char *fmt, u32 length, ...);
 
 // Use these for string literals
-#define print(writer, s, ...) writer_print(writer, "" s, sizeof(s) - 1, __VA_ARGS__)
+#define print(writer, s, ...) writer_print(writer, "" s, sizeof(s) - 1, ##__VA_ARGS__)
 #define write_all(writer, s) writer_write(writer, "" s, sizeof(s) - 1)

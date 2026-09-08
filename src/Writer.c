@@ -29,35 +29,33 @@ static int_type get_type(signedness sign, size s);
 static char next(const char **fmt, const char *end);
 
 extern __attribute__((noreturn)) void _DEFAULT_Handler();
-#define ERROR_HANDLER() _DEFAULT_Handler();
+#define ERROR_HANDLER() _DEFAULT_Handler()
 
 void flush(Writer *writer) {
-    if (writer && writer->_flush) {
-        writer->_flush(writer);
+    if (!writer || !writer->_flush) {
+        ERROR_HANDLER();
     }
+    writer->_flush(writer);
+    writer->current_size = 0;
 }
 
 i32 writer_write(Writer *writer, const char *str, u32 length) {
-    i32 ret = 0;
+    u32 remaining = length;
 
-    if (length > WRITER_MAX_BUFFER_SIZE) {
-        ret = WRITER_STRING_TOO_BIG;
-        return ret;
+    while (remaining) {
+        if (writer->current_size == WRITER_MAX_BUFFER_SIZE) {
+            flush(writer);
+        }
+        u32 space = WRITER_MAX_BUFFER_SIZE - writer->current_size;
+        u32 bytes_to_process = (remaining < space) ? remaining : space;
+
+        memcpy(writer->buf + writer->current_size, str, bytes_to_process);
+        writer->current_size = bytes_to_process;
+        str += bytes_to_process;
+        remaining -= bytes_to_process;
     }
 
-    u32 current_index = writer->current_size;
-    if (current_index + length > WRITER_MAX_BUFFER_SIZE) {
-        flush(writer);
-        current_index = writer->current_size;
-    }
-
-    for (u32 i = 0; i < length; i++) {
-        writer->buf[current_index++] = str[i];
-        ret++;
-    }
-    writer->current_size = current_index;
-
-    return ret;
+    return (i32)length;
 }
 
 i32 writer_print(Writer *writer, const char *fmt, u32 length, ...) {
@@ -77,18 +75,28 @@ i32 writer_print(Writer *writer, const char *fmt, u32 length, ...) {
         if (c == '{') {
             c = next(&fmt, end);
 
-            if (c == 's') {
+            if (c == 's') { // This is the preferred path. Use LITERAL("hello daddy") or STRING(ptr, length) macros
                 if (next(&fmt, end) != '}') {
                     ERROR_HANDLER();
                 }
 
-                char *str = va_arg(args, char *);
-                i32 bytes = writer_write(writer, str, sizeof(str));
+                String str = va_arg(args, String);
+                i32 bytes = writer_write(writer, str.ptr, str.len);
                 if (bytes < 0) {
                     ERROR_HANDLER();
                 }
                 bytes_printed += bytes;
 
+            } else if (c == 'z') { // for c strings. We(I) don't like these.
+                if (next(&fmt, end) != '}') {
+                    ERROR_HANDLER();
+                }
+                char *str = va_arg(args, char *);
+                i32 bytes = writer_write(writer, str, strlen(str));
+                if (bytes < 0) {
+                    ERROR_HANDLER();
+                }
+                bytes_printed += bytes;
             } else {
                 fmt_int fmt_type;
                 if (c == 'x') {
@@ -237,9 +245,11 @@ static const u32 pow_of_10_table[10] = {
 };
 
 static u32 count_digits_u32(u32 num) {
-    u32 result = 0;
+    // minimum digits is 1 (0 has 1 digit)
+    u32 result = 1;
 
-    while (num >= pow_of_10_table[result]) {
+    // u32 cannot be greater than 10 digits. Handles num > 1e9
+    while (result < 10 && num >= pow_of_10_table[result]) {
         result++;
     }
 
@@ -247,11 +257,6 @@ static u32 count_digits_u32(u32 num) {
 }
 
 static u32 u32_to_string(u32 num, char *buff) {
-    if (num == 0) {
-        buff[0] = '0';
-        return 1;
-    }
-
     u32 initial_length = count_digits_u32(num);
     u32 length = initial_length;
 

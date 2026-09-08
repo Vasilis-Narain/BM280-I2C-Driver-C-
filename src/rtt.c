@@ -33,7 +33,6 @@ rtt_ctrl_block_t __attribute__((used, section(".rtt_cb"))) _SEGGER_RTT = {
 
 void rtt_flush(Writer *writer) {
     rtt_write((const char *)(writer->buf), writer->current_size, RTT_WRITE_CHANNEL);
-    writer->current_size = 0;
 }
 
 b32 rtt_write(const char *str, u32 len, u8 channel) {
@@ -43,8 +42,8 @@ b32 rtt_write(const char *str, u32 len, u8 channel) {
 
     for (u32 i = 0; i < len; i++) {
         u32 wr_next = wr_idx + 1;
-        if (wr_next >= RTT_BUFFER_SIZE_UP - 1) {
-            wr_next = 1;
+        if (wr_next >= RTT_BUFFER_SIZE_UP) {
+            wr_next = 0;
         }
 
         if (wr_next == rd_idx) {
@@ -74,7 +73,7 @@ u32 rtt_read(char *buf, u32 max, u8 channel) {
     char *tmp = buf;
     u32 num_bytes_processed = 0;
 
-    while ((rd_idx != wr_idx) && (num_bytes_processed <= max)) {
+    while ((rd_idx != wr_idx) && (num_bytes_processed < max)) {
         u32 rd_next = rd_idx + 1;
 
         if (rd_next >= RTT_BUFFER_SIZE_DOWN) {

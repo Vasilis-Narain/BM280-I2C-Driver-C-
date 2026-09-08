@@ -18,3 +18,12 @@ void *memset(void *blk, i32 c, usize n) {
     }
     return blk;
 }
+
+usize strlen(const char *str) {
+    usize length = 0;
+    while (*str != '\0') {
+        str++;
+        length++;
+    }
+    return length;
+}
