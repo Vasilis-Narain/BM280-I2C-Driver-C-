@@ -194,7 +194,6 @@ static i32 print_int_hex(Writer *writer, int_type t, int_union num) {
     return writer_write(writer, (const char *)buff, size);
 }
 
-// NOTE(vasilis): this will break if we change the int_type enum. So we won't
 static int_type get_type(signedness sign, size s) {
     i32 offset = 0;
     if (sign == SIGNED) {

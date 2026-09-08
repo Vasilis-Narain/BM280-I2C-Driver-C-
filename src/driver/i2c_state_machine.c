@@ -1,5 +1,25 @@
 #include "i2c_state_machine.h"
-#include "../rtt.h"
+
+/*
+    * Interrupt notes:
+    *  Use NVIC_ISER to set/read enabled state of interrupts.
+    *
+    *  Use NVIC_ICER to clear/read enabled state of interrupts.
+    *
+    *  Use NVIC_ISPR to set/read pending state of interrupts
+    *
+    *  Use NVIC_ICPR to clear/read pending state of interrupts
+    *
+    *  Use NVIC_IABR to show active state of each interrupt
+    *
+    *  Use NVIC_IPRn to set/read interrupt priorities
+    *
+    * 
+*/
+
+//NOTE(vasilis): these are the I2C interrupt handlers:
+//void __attribute__((weak, alias("_DEFAULT_Handler"))) I2C0_IRQ_Handler();
+//void __attribute__((weak, alias("_DEFAULT_Handler"))) I2C1_IRQ_Handler();
 
 // Make sure to `#define SDA_PIN` and `#define SCL_PIN` to be used by pico.
 // Defaults are 14 and 15 respectively.
