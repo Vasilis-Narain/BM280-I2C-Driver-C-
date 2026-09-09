@@ -56,8 +56,11 @@ void resets_clear(u32 mask) {
 
 void main() {
 
+    char writer_buf[RTT_WRITER_MAX_BUFFER_SIZE];
     Writer writer = {
-        ._flush = rtt_flush,
+        .buf = writer_buf,
+        .capacity = RTT_WRITER_MAX_BUFFER_SIZE,
+        .__flush = rtt_flush,
     };
 
     // Always first clear reset bits for desired functionalities.

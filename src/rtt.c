@@ -31,14 +31,17 @@ rtt_ctrl_block_t __attribute__((used, section(".rtt_cb"))) _SEGGER_RTT = {
     },
 };
 
+u32 rtt_bytes_dropped;
+
 void rtt_flush(Writer *writer) {
-    rtt_write((const char *)(writer->buf), writer->current_size, RTT_WRITE_CHANNEL);
+    u32 bytes_written = rtt_write((const char *)(writer->buf), writer->current_size, RTT_WRITE_CHANNEL);
+    rtt_bytes_dropped += writer->current_size - bytes_written;
 }
 
-b32 rtt_write(const char *str, u32 len, u8 channel) {
+u32 rtt_write(const char *str, u32 len, u8 channel) {
     u32 wr_idx = _SEGGER_RTT.aUp[channel].WrOff;
     u32 rd_idx = (u32)_SEGGER_RTT.aUp[channel].RdOff;
-    b32 success = 1;
+    u32 bytes_written = 0;
 
     for (u32 i = 0; i < len; i++) {
         u32 wr_next = wr_idx + 1;
@@ -47,11 +50,11 @@ b32 rtt_write(const char *str, u32 len, u8 channel) {
         }
 
         if (wr_next == rd_idx) {
-            success = 0;
             break;
         }
 
         rtt_buffer_up[wr_idx] = *str++;
+        bytes_written++;
         wr_idx = wr_next;
     }
 
@@ -60,11 +63,11 @@ b32 rtt_write(const char *str, u32 len, u8 channel) {
 #endif
 
     _SEGGER_RTT.aUp[channel].WrOff = wr_idx;
-    return success;
+    return bytes_written;
 }
 
 void writer_error(const char *str, u32 len) {
-    rtt_write(str, len, RTT_WRITE_CHANNEL);
+    rtt_bytes_dropped += len - rtt_write(str, len, RTT_WRITE_CHANNEL);
 }
 
 u32 rtt_read(char *buf, u32 max, u8 channel) {

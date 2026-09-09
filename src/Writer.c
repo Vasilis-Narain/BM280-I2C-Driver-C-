@@ -23,10 +23,10 @@ extern __attribute__((noreturn)) void _DEFAULT_Handler();
 #define ERROR_HANDLER() _DEFAULT_Handler()
 
 void flush(Writer *writer) {
-    if (!writer || !writer->_flush) {
+    if (!writer || !writer->buf || !writer->capacity || !writer->__flush) {
         ERROR_HANDLER();
     }
-    writer->_flush(writer);
+    writer->__flush(writer);
     writer->current_size = 0;
 }
 
@@ -34,10 +34,10 @@ i32 writer_write(Writer *writer, const char *str, u32 length) {
     u32 remaining = length;
 
     while (remaining) {
-        if (writer->current_size == WRITER_MAX_BUFFER_SIZE) {
+        if (writer->current_size == writer->capacity) {
             flush(writer);
         }
-        u32 space = WRITER_MAX_BUFFER_SIZE - writer->current_size;
+        u32 space = writer->capacity - writer->current_size;
         u32 bytes_to_process = (remaining < space) ? remaining : space;
 
         memcpy(writer->buf + writer->current_size, str, bytes_to_process);
@@ -50,7 +50,7 @@ i32 writer_write(Writer *writer, const char *str, u32 length) {
 }
 
 i32 writer_print(Writer *writer, const char *fmt, u32 length, ...) {
-    if (length >= WRITER_MAX_BUFFER_SIZE) {
+    if (length >= writer->capacity) {
         return WRITER_STRING_TOO_BIG;
     }
 
@@ -231,7 +231,7 @@ static i32 print_int_hex(Writer *writer, int_size size, u32 num) {
 }
 
 void writer_write_char(Writer *writer, char c) {
-    if (writer->current_size >= WRITER_MAX_BUFFER_SIZE) {
+    if (writer->current_size >= writer->capacity) {
         flush(writer);
     }
     writer->buf[writer->current_size] = c;
@@ -356,7 +356,7 @@ static u32 spread32(u16 num) {
     x = ((x & 0x00F000F0) >> 4) | ((x & 0x000F000F) << 8);
 
     u32 m = ((x + 0x06060606) >> 4) & 0x01010101;
-    return x + 0x30303030 + m * 39;
+    return x + 0x30303030 + m * 39; // 0x30 = '0'
 }
 
 static u16 spread16(u8 num) {

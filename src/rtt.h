@@ -2,6 +2,10 @@
 #include <type_alias.h>
 #include "Writer.h"
 
+#ifndef RTT_WRITER_MAX_BUFFER_SIZE
+#define RTT_WRITER_MAX_BUFFER_SIZE 512
+#endif
+
 #ifndef RTT_WRITE_CHANNEL
 #define RTT_WRITE_CHANNEL 0
 #endif
@@ -76,7 +80,8 @@ typedef struct {
 
 // Global data
 extern rtt_ctrl_block_t _SEGGER_RTT;
+extern u32 rtt_bytes_dropped;
 
-b32 rtt_write(const char *str, u32 len, u8 channel);
+u32 rtt_write(const char *str, u32 len, u8 channel);
 u32 rtt_read(char *buf, u32 max, u8 channel);
 void rtt_flush(Writer *writer);

@@ -4,18 +4,18 @@
 #include <type_alias.h>
 #include <stdarg.h>
 
-#ifndef WRITER_MAX_BUFFER_SIZE
-#define WRITER_MAX_BUFFER_SIZE 256
-#endif
-
 typedef struct Writer Writer;
 
 // Flush function must be provided. It depends on target architecture.
 // In this case it calls RTT functions (copies bytes to the dedicated memory block)
 struct Writer {
-    char buf[WRITER_MAX_BUFFER_SIZE];
+    char *buf;
+    u32 capacity;
     u32 current_size;
-    void (*_flush)(Writer *);
+
+    // The Writer wipes its buffer after `__flush` returns, unconditionally.
+    // Loss, retry, and blocking policies are implementation defined.
+    void (*__flush)(Writer *);
 };
 
 typedef enum {
