@@ -11,15 +11,6 @@ because transcribing addresses isn't particularly interesting.
 - Pico Debug Probe over SWD
 - BME280 breakout (the one I used is Pimoroni)
 
-**Wiring**:
-
-| BME280 | Pico 2       |
-|--------|--------------|
-| SDA    | GP14 (I2C1)  |
-| SCL    | GP15 (I2C1)  |
-| VCC    | 3V3          |
-| GND    | GND          |
-
 ## Build
 
 ```sh
