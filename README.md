@@ -1,9 +1,45 @@
-A driver implementation for BME280 I2C humidity/pressure/temperature sensor written in C.
+# BME280 I2C Driver (RP2350)
 
-In order to get to the driver some things were implemented first:
-- RTT implementation necessary for print debugging 
-- Writer implementation to achieve functionality simlar to printf (int to string and int to hexstring implementations). Inspired by Zig std: aims to reduce I/O calls (in this case RTT buffer loads) as much as possible.
+BME280 driver in C for the Pico 2, bare metal. No SDK, no HAL, no libc. Using only the `register` and `struct` headers provided by the `pico-sdk`,
+because transcribing addresses isn't particularly interesting.
 
-Driver implementation (work in progress...)
-- memory map from supplier (Bosch)
-- single and burst __blocking__ read functions for setup (reading compensation coefficients)
+***Work in progress***: setup and blocking reads work. The goal is to have this work as a non-blocking interrupt-based state machine. 
+
+## Build
+
+```sh
+make           # build/firmware.uf2
+make flash     # probe-rs download + reset
+make run       # flash and stream RTT
+```
+
+Point `SDK` in the Makefile to the Pico `register` and `struct` header folders.
+
+**Required to run**: Pico W, Debug Probe over SWD, BME280, `probe-rs` installed and on PATH.
+
+`.vscode` is to configure step-debugging for VSCode. This assumes the two above points in order to run.
+
+## What's done
+
+**Startup** (`entry.c`, `_crt0.c`, `link.ld`) -- vector table, all 52 IRQs weak-aliased to a handler that resets the peripherals and halts.
+Clock is set to use the crystal oscillator for greater accuracy (`XOSC`) and then the `FPU` is enabled. Then `.data` is copied into RAM and `.bss` is zeroed.
+Also includes the necessary boot block expected by the RP2350 (magic numbers pulled from the datasheet).
+
+**RTT** (`rtt.c`) -- SEGGER's protocol is just a struct at a known layout in RAM that the host scans for, so, to keep with the zero-dependency spirit of this project,
+I wrote the target side myself. The struct layout itself was taken from SEGGER's own documentation, but the ring buffer logic was written by me. Using `probe-rs` to attach
+over SWD with the Pico Debug Probe. Also gave the SEGGER block dedicated memory space in `link.ld` called `.rtt_cb`.
+
+**Writer** (`Writer.c`) -- buffered formatting, no `printf`. The idea was taken from Zig's `std.Io.Writer` interface: format into a caller-owned buffer and only do i/o on flush,
+reducing i/o calls dramatically. In this case i/o is just copying bytes to the SEGGER buffers. As this has not been written to be conformant to `printf` I took several liberties
+with the syntax (again inspired by Zig, but not faithfully). `{d}` for int, `{u}` for uint, `{u:xb}` for a (`x`)hex (`b`) byte. Decimal to string using a two-digit-at-a-time
+lookup table based algorithm. Hex to string branchless SWAR algorithm, adapted from [here](https://johnnylee-sde.github.io/Fast-unsigned-integer-to-hex-string/).
+
+**I2C** (`driver/`) -- mostly still work in progress. For now there is a blocking read function used for setup (i.e. getting the factory hard-coded calibration parameters from 
+the BME280).
+
+## TODO
+
+- sensor config + raw measurement read
+- compensation math (taking from Bosch datasheet provided examples)
+- interrupt-driven state machine for read/write I2C operations.
+- verify the bus with a logic analyser.
