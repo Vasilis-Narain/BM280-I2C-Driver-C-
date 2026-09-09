@@ -5,6 +5,21 @@ because transcribing addresses isn't particularly interesting.
 
 ***Work in progress***: setup and blocking reads work. The goal is to have this work as a non-blocking interrupt-based state machine. 
 
+## Hardware
+
+- Pico 2 (RP2350)
+- Pico Debug Probe over SWD
+- BME280 breakout (the one I used is Pimoroni)
+
+**Wiring**:
+
+| BME280 | Pico 2       |
+|--------|--------------|
+| SDA    | GP14 (I2C1)  |
+| SCL    | GP15 (I2C1)  |
+| VCC    | 3V3          |
+| GND    | GND          |
+
 ## Build
 
 ```sh
@@ -13,11 +28,9 @@ make flash     # probe-rs download + reset
 make run       # flash and stream RTT
 ```
 
-Point `SDK` in the Makefile to the Pico `register` and `struct` header folders.
+Point `SDK` in the Makefile to the Pico headers: `SDK=/path/to/pico-sdk/src/rp2350/hardware_regs/include`
 
-**Required to run**: Pico W, Debug Probe over SWD, BME280, `probe-rs` installed and on PATH.
-
-`.vscode` is to configure step-debugging for VSCode. This assumes the two above points in order to run.
+Also, `make flash` and `make run` require [`probe-rs`](https://probe.rs/) to be on PATH and a connected debug probe.
 
 ## What's done
 
