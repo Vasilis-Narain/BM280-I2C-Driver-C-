@@ -57,9 +57,9 @@ typedef enum {
 
 typedef enum {
     byte,
-    bytebyte,
+    half,
     word,
-} size;
+} int_size;
 
 typedef union {
     u8 uint8;

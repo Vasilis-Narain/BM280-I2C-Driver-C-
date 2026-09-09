@@ -22,7 +22,7 @@ typedef struct {
     const char *ptr;
     u32 len;
 } String;
-#define LITERAL(lit) ((String){"" lit, sizeof(lit) - 1)}
+#define LITERAL(lit) ((String){"" lit, sizeof(lit) - 1})
 #define STRING(str, length) ((String){(str), (length)})
 
 typedef struct {

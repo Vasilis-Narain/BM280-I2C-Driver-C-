@@ -1,10 +1,6 @@
 #include <type_alias.h>
 #include "Writer.h"
 
-#ifndef WRITER_MAX_BUFFER_SIZE
-#define WRITER_MAX_BUFFER_SIZE 1024
-#endif
-
 //Error codes
 #define WRITER_STRING_TOO_BIG -1
 #define WRITER_BUFFER_WAS_FLUSHED 1
@@ -16,17 +12,18 @@ static void copy32(char *out, u32 num);
 static u8 generic_int_to_hex(int_type t, int_union num, char *out);
 static u8 get_int_size(int_type t);
 static b32 is_signed(int_type t);
-static i32 sign_extend(int_type t, int_union num);
 static u32 i32_to_string(i32 num, char *buff);
 static u32 u32_to_string(u32 num, char *buff);
 static b32 _32_to_hex(int_type t, int_union num, char out[HEX_LEN(0, 32)]);
 static b32 _16_to_hex(int_type t, int_union num, char out[HEX_LEN(0, 16)]);
 static b32 _8_to_hex(int_type t, int_union num, char out[HEX_LEN(0, 8)]);
+static i32 sign_extend(int_size size, i32 num);
 static i32 print_int_hex(Writer *writer, int_type t, int_union num);
-static i32 print_int_dec(Writer *writer, int_type t, int_union num);
-static i32 print_int(Writer *writer, int_type t, int_union num, fmt_int fmt);
-static int_type get_type(signedness sign, size s);
+static i32 print_int_dec(Writer *writer, i32 num);
+static i32 print_uint_dec(Writer *writer, u32 num);
+static int_type get_type(signedness sign, int_size s);
 static char next(const char **fmt, const char *end);
+static u32 unsigned_trunc(int_size size, u32 num);
 
 extern __attribute__((noreturn)) void _DEFAULT_Handler();
 #define ERROR_HANDLER() _DEFAULT_Handler()
@@ -50,7 +47,7 @@ i32 writer_write(Writer *writer, const char *str, u32 length) {
         u32 bytes_to_process = (remaining < space) ? remaining : space;
 
         memcpy(writer->buf + writer->current_size, str, bytes_to_process);
-        writer->current_size = bytes_to_process;
+        writer->current_size += bytes_to_process;
         str += bytes_to_process;
         remaining -= bytes_to_process;
     }
@@ -98,52 +95,80 @@ i32 writer_print(Writer *writer, const char *fmt, u32 length, ...) {
                 }
                 bytes_printed += bytes;
             } else {
-                fmt_int fmt_type;
-                if (c == 'x') {
-                    fmt_type = FMT_HEX;
-
-                } else if (c == 'd') {
-                    fmt_type = FMT_DEC;
-                } else {
-                    ERROR_HANDLER();
-                }
-
-                if (next(&fmt, end) != ':') {
-                    ERROR_HANDLER();
-                }
-
+                fmt_int fmt_type = FMT_DEC;
                 signedness sign;
-                c = next(&fmt, end);
-                if (c == 'u') {
-                    sign = UNSIGNED;
-                } else if (c == 'i') {
+                int_size size = word;
+                if (c == 'd') {
                     sign = SIGNED;
+                } else if (c == 'u') {
+                    sign = UNSIGNED;
                 } else {
                     ERROR_HANDLER();
                 }
 
-                size width;
                 c = next(&fmt, end);
-                if (c == 'b') {
-                    width = byte;
-                } else if (c == 's') {
-                    width = bytebyte;
-                } else if (c == 'w') {
-                    width = word;
-                } else {
+                if (c == ':') {
+                    c = next(&fmt, end);
+                    if (c == 'x') {
+                        fmt_type = FMT_HEX;
+                        c = next(&fmt, end);
+                    }
+
+                    if (c == '}') {
+                    } else if (c == 'b') {
+                        size = byte;
+                        c = next(&fmt, end);
+                    } else if (c == 's') {
+                        size = half;
+                        c = next(&fmt, end);
+                    } else {
+                        ERROR_HANDLER();
+                    }
+                }
+                if (c != '}') {
                     ERROR_HANDLER();
                 }
 
-                if (next(&fmt, end) != '}') {
-                    ERROR_HANDLER();
+                switch (fmt_type) {
+                case FMT_DEC:
+                    switch (sign) {
+                    case UNSIGNED: {
+                        u32 num = va_arg(args, u32);
+                        if (size != word) {
+                            num = unsigned_trunc(size, num);
+                        }
+                        i32 bytes = print_uint_dec(writer, num);
+                        if (bytes < 0) {
+                            ERROR_HANDLER();
+                        }
+                        bytes_printed += bytes;
+                        break;
+                    }
+                    case SIGNED: {
+                        i32 num = va_arg(args, i32);
+                        if (size != word) {
+                            num = sign_extend(size, num);
+                        }
+                        i32 bytes = print_int_dec(writer, num);
+                        if (bytes < 0) {
+                            ERROR_HANDLER();
+                        }
+                        bytes_printed += bytes;
+                        break;
+                    }
+                    }
+                    break;
+                case FMT_HEX: {
+                    int_union num = (int_union)va_arg(args, u32);
+                    int_type type = get_type(sign, size);
+                    i32 bytes = print_int_hex(writer, type, num);
+                    if (bytes < 0) {
+                        ERROR_HANDLER();
+                    }
+                    bytes_printed += bytes;
+                    break;
                 }
-
-                u32 num = va_arg(args, u32);
-                i32 bytes = print_int(writer, get_type(sign, width), (int_union)num, fmt_type);
-                if (bytes < 0) {
-                    ERROR_HANDLER();
                 }
-                bytes_printed += bytes;
             }
         } else {
             writer_write_char(writer, c);
@@ -160,39 +185,49 @@ static char next(const char **fmt, const char *end) {
     return (*fmt < end) ? **fmt : '\0';
 }
 
-static i32 print_int(Writer *writer, int_type t, int_union num, fmt_int fmt) {
-    switch (fmt) {
-    case FMT_HEX:
-        return print_int_hex(writer, t, num);
-    case FMT_DEC:
-        return print_int_dec(writer, t, num);
+static i32 sign_extend(int_size size, i32 num) {
+    i32 x;
+    switch (size) {
+    case byte:
+        x = (i32)(i8)(u8)num;
+        break;
+    case half:
+        x = (i32)(i16)(u16)num;
+        break;
+    case word:
+        x = num;
+        break;
     }
-    return 0;
+    return x;
 }
 
-static i32 print_int_dec(Writer *writer, int_type t, int_union num) {
+static u32 unsigned_trunc(int_size size, u32 num) {
+    u32 x;
+    switch (size) {
+    case byte:
+        x = (u32)(u8)num;
+        break;
+    case half:
+        x = (u32)(u16)num;
+        break;
+    case word:
+        x = num;
+        break;
+    }
+    return x;
+}
+
+static i32 print_uint_dec(Writer *writer, u32 num) {
     char buff[25];
     u32 size = 0;
-    if (is_signed(t)) {
-        i32 sign_extended = sign_extend(t, num);
-        size = i32_to_string(sign_extended, buff);
-    } else {
-        u32 value = 0;
-        switch (t) {
-        case uint8:
-            value = (u32)num.uint8;
-            break;
-        case uint16:
-            value = (u32)num.uint16;
-            break;
-        case uint32:
-            value = num.uint32;
-            break;
-        default:
-            break;
-        }
-        size = u32_to_string(value, buff);
-    }
+    size = u32_to_string(num, buff);
+    return writer_write(writer, (const char *)buff, size);
+}
+
+static i32 print_int_dec(Writer *writer, i32 num) {
+    char buff[25];
+    u32 size = 0;
+    size = i32_to_string(num, buff);
     return writer_write(writer, (const char *)buff, size);
 }
 
@@ -202,7 +237,7 @@ static i32 print_int_hex(Writer *writer, int_type t, int_union num) {
     return writer_write(writer, (const char *)buff, size);
 }
 
-static int_type get_type(signedness sign, size s) {
+static int_type get_type(signedness sign, int_size s) {
     i32 offset = 0;
     if (sign == SIGNED) {
         offset = 3;
@@ -211,7 +246,7 @@ static int_type get_type(signedness sign, size s) {
 }
 
 void writer_write_char(Writer *writer, char c) {
-    if (writer->current_size + 1 >= WRITER_MAX_BUFFER_SIZE) {
+    if (writer->current_size >= WRITER_MAX_BUFFER_SIZE) {
         flush(writer);
     }
     writer->buf[writer->current_size] = c;
@@ -290,26 +325,6 @@ static u32 i32_to_string(i32 num, char *buff) {
     }
     size += u32_to_string(mag, buff);
     return size;
-}
-
-static i32 sign_extend(int_type t, int_union num) {
-    i32 x = num.int32; // The shifts under should handle uninitialized bits
-    i32 shift_amount = 0;
-    switch (t) {
-    case int8:
-        shift_amount = 32 - 8;
-        break;
-    case int16:
-        shift_amount = 32 - 16;
-        break;
-    case int32:
-        break;
-    default:
-        break;
-    }
-    x = x << shift_amount;
-    x = x >> shift_amount;
-    return x;
 }
 
 static u8 generic_int_to_hex(int_type t, int_union num, char *out) {

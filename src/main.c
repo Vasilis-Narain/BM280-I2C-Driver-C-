@@ -85,9 +85,9 @@ void main() {
     u16 *tmp = (u16 *)&tp_params;
     for (u8 i = 0; i < 12; i++) {
         if (i == 0 || i == 3) {
-            print(&writer, "We're printing a uint16: {d:us}\n", *tmp++);
+            print(&writer, "We're printing a uint16: {u:xs}\n", *tmp++);
         } else {
-            print(&writer, "We're printing a int16: {d:is}\n", *tmp++);
+            print(&writer, "We're printing a int16: {d:s}\n", *tmp++);
         }
     }
 
@@ -101,11 +101,11 @@ void main() {
     // its here to test the printing API itself.
     for (u32 i = 0; i < 6; i++) {
         if (i == 0 || i == 2) {
-            print(&writer, "We're printing a uint8: {x:ub}\n", *tmp++);
+            print(&writer, "We're printing a uint8: {u:xb}\n", *tmp++);
         } else if (i == 5) {
-            print(&writer, "We're printing a int8: {x:ub}\n", *tmp++);
+            print(&writer, "We're printing a int8: {d:xb}\n", *tmp++);
         } else {
-            print(&writer, "We're printing a int16: {x:is}\n", *tmp++);
+            print(&writer, "We're printing a int16: {d:xs}\n", *tmp++);
         }
     }
 
