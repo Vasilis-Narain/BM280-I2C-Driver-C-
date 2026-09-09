@@ -22,11 +22,21 @@ static u32 unsigned_trunc(int_size size, u32 num);
 extern __attribute__((noreturn)) void _DEFAULT_Handler();
 #define ERROR_HANDLER() _DEFAULT_Handler()
 
-void flush(Writer *writer) {
-    if (!writer || !writer->buf || !writer->capacity || !writer->__flush) {
+void writer_init(Writer *writer, char *buf, u32 capacity, void (*flush_fn)(Writer *)) {
+    if (!writer || !buf || !capacity || !flush_fn) {
         ERROR_HANDLER();
     }
-    writer->__flush(writer);
+    writer->buf = buf;
+    writer->capacity = capacity;
+    writer->current_size = 0;
+    writer->flush_fn = flush_fn;
+}
+
+void flush(Writer *writer) {
+    if (!writer || !writer->buf || !writer->capacity || !writer->flush_fn) {
+        ERROR_HANDLER();
+    }
+    writer->flush_fn(writer);
     writer->current_size = 0;
 }
 
@@ -91,7 +101,7 @@ i32 writer_print(Writer *writer, const char *fmt, u32 length, ...) {
             } else {
                 fmt_int fmt_type = FMT_DEC;
                 signedness sign;
-                int_size size = word;
+                int_size size = WORD;
                 if (c == 'd') {
                     sign = SIGNED;
                 } else if (c == 'u') {
@@ -110,10 +120,10 @@ i32 writer_print(Writer *writer, const char *fmt, u32 length, ...) {
 
                     if (c == '}') {
                     } else if (c == 'b') {
-                        size = byte;
+                        size = BYTE;
                         c = next(&fmt, end);
                     } else if (c == 's') {
-                        size = half;
+                        size = HALF;
                         c = next(&fmt, end);
                     } else {
                         ERROR_HANDLER();
@@ -128,7 +138,7 @@ i32 writer_print(Writer *writer, const char *fmt, u32 length, ...) {
                     switch (sign) {
                     case UNSIGNED: {
                         u32 num = va_arg(args, u32);
-                        if (size != word) {
+                        if (size != WORD) {
                             num = unsigned_trunc(size, num);
                         }
                         i32 bytes = print_uint_dec(writer, num);
@@ -140,7 +150,7 @@ i32 writer_print(Writer *writer, const char *fmt, u32 length, ...) {
                     }
                     case SIGNED: {
                         i32 num = va_arg(args, i32);
-                        if (size != word) {
+                        if (size != WORD) {
                             num = sign_extend(size, num);
                         }
                         i32 bytes = print_int_dec(writer, num);
@@ -181,13 +191,13 @@ static char next(const char **fmt, const char *end) {
 static i32 sign_extend(int_size size, i32 num) {
     i32 x;
     switch (size) {
-    case byte:
+    case BYTE:
         x = (i32)(i8)(u8)num;
         break;
-    case half:
+    case HALF:
         x = (i32)(i16)(u16)num;
         break;
-    case word:
+    case WORD:
         x = num;
         break;
     }
@@ -197,13 +207,13 @@ static i32 sign_extend(int_size size, i32 num) {
 static u32 unsigned_trunc(int_size size, u32 num) {
     u32 x;
     switch (size) {
-    case byte:
+    case BYTE:
         x = (u32)(u8)num;
         break;
-    case half:
+    case HALF:
         x = (u32)(u16)num;
         break;
-    case word:
+    case WORD:
         x = num;
         break;
     }
@@ -317,15 +327,15 @@ static u32 to_hex(int_size size, u32 value, char *out) {
     out[0] = '0';
     out[1] = 'x';
     switch (size) {
-    case byte:
+    case BYTE:
         copy16(out + 2, spread16((u8)value));
         bytes_processed = 4;
         break;
-    case half:
+    case HALF:
         copy32(out + 2, spread32((u16)value));
         bytes_processed = 6;
         break;
-    case word:
+    case WORD:
         copy32(out + 2, spread32((u16)(value >> 16)));
         copy32(out + 6, spread32((u16)value));
         bytes_processed = 10;

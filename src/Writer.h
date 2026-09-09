@@ -9,13 +9,15 @@ typedef struct Writer Writer;
 // Flush function must be provided. It depends on target architecture.
 // In this case it calls RTT functions (copies bytes to the dedicated memory block)
 struct Writer {
+
+    // Caller owned buffer
     char *buf;
     u32 capacity;
     u32 current_size;
 
-    // The Writer wipes its buffer after `__flush` returns, unconditionally.
+    // The Writer wipes its buffer after `flush_fn` returns, unconditionally.
     // Loss, retry, and blocking policies are implementation defined.
-    void (*__flush)(Writer *);
+    void (*flush_fn)(Writer *);
 };
 
 typedef enum {
@@ -24,9 +26,9 @@ typedef enum {
 } signedness;
 
 typedef enum {
-    byte,
-    half,
-    word,
+    BYTE,
+    HALF,
+    WORD,
 } int_size;
 
 typedef enum {
@@ -40,6 +42,14 @@ typedef enum {
 // on-time printing.
 extern void writer_error(const char *str, u32 length);
 #define ERROR(s) writer_error("ERR::" s, sizeof("ERR::" s) - 1)
+
+void writer_init(Writer *writer, char *buf, u32 capacity, void (*flush_fn)(Writer *));
+#define WRITER_INIT(writer, buf, flush_fn)                                     \
+    do {                                                                       \
+        _Static_assert(!__builtin_types_compatible_p(__typeof__(buf), char *), \
+            "WRITER_INIT needs an array, not a pointer");                      \
+        writer_init((writer), (buf), sizeof(buf), (flush_fn));                 \
+    } while (0)
 
 // Always remember to flush!
 void flush(Writer *writer);

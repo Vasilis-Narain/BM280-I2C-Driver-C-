@@ -57,11 +57,8 @@ void resets_clear(u32 mask) {
 void main() {
 
     char writer_buf[RTT_WRITER_MAX_BUFFER_SIZE];
-    Writer writer = {
-        .buf = writer_buf,
-        .capacity = RTT_WRITER_MAX_BUFFER_SIZE,
-        .__flush = rtt_flush,
-    };
+    Writer rtt_writer;
+    WRITER_INIT(&rtt_writer, writer_buf, rtt_flush);
 
     // Always first clear reset bits for desired functionalities.
     // In this case: iobank, padsbank, i2c
@@ -78,41 +75,42 @@ void main() {
     // Pads bank -> configure pads for led
     hw_clear_bits(&pads_bank0_hw->io[PIN25], PADS_BANK0_GPIO0_ISO_BITS);
 
-    write_all(&writer, "\nRTT OK\n");
+    write_all(&rtt_writer, "\nRTT OK\n");
     i2c_init_master();
 
     bme280_calib_tp tp_params;
     get_tp_params(&tp_params);
 
-    write_all(&writer, "\n...printing tp_params:\n");
+    write_all(&rtt_writer, "\n...printing tp_params:\n");
     u16 *tmp = (u16 *)&tp_params;
     for (u8 i = 0; i < 12; i++) {
         if (i == 0 || i == 3) {
-            print(&writer, "We're printing a uint16: {u:xs}\n", *tmp++);
+            print(&rtt_writer, "We're printing a uint16: {u:xs}\n", *tmp++);
         } else {
-            print(&writer, "We're printing a int16: {d:s}\n", *tmp++);
+            print(&rtt_writer, "We're printing a int16: {d:s}\n", *tmp++);
         }
     }
 
     bme280_calib_hum hum_params;
     get_hum_params(&hum_params);
 
-    write_all(&writer, "\n...printing hum_params:\n");
+    write_all(&rtt_writer, "\n...printing hum_params:\n");
     tmp = (u16 *)&hum_params;
 
     // NOTE(vasilis): this doesnt actually select the 'correct' bytes...
     // its here to test the printing API itself.
     for (u32 i = 0; i < 6; i++) {
         if (i == 0 || i == 2) {
-            print(&writer, "We're printing a uint8: {u:xb}\n", *tmp++);
+            print(&rtt_writer, "We're printing a uint8: {u:xb}\n", *tmp++);
         } else if (i == 5) {
-            print(&writer, "We're printing a int8: {d:xb}\n", *tmp++);
+            print(&rtt_writer, "We're printing a int8: {d:xb}\n", *tmp++);
         } else {
-            print(&writer, "We're printing a int16: {d:xs}\n", *tmp++);
+            print(&rtt_writer, "We're printing a int16: {d:xs}\n", *tmp++);
         }
     }
 
-    flush(&writer);
+    // dont forget to flush :D
+    flush(&rtt_writer);
 
     sio_hw->gpio_oe_set = 1 << PIN25; // output enable SIO reg. Special atomic registers for SIO
 
