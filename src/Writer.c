@@ -334,18 +334,6 @@ static u32 to_hex(int_size size, u32 value, char *out) {
     return bytes_processed;
 }
 
-static void copy32(char *out, u32 num) {
-    out[0] = (char)(num >> 0);
-    out[1] = (char)(num >> 8);
-    out[2] = (char)(num >> 16);
-    out[3] = (char)(num >> 24);
-}
-
-static void copy16(char *out, u16 num) {
-    out[0] = (char)(num >> 0);
-    out[1] = (char)(num >> 8);
-}
-
 // Following functions are to convert a uint*_t to a hex string.
 //
 // Modified from https://johnnylee-sde.github.io/Fast-unsigned-integer-to-hex-string/
@@ -365,4 +353,16 @@ static u16 spread16(u8 num) {
 
     u32 m = ((x + 0x0606) >> 4) & 0x0101;
     return x + 0x3030 + m * 39;
+}
+
+static void copy32(char *out, u32 num) {
+    out[0] = (char)(num >> 0);
+    out[1] = (char)(num >> 8);
+    out[2] = (char)(num >> 16);
+    out[3] = (char)(num >> 24);
+}
+
+static void copy16(char *out, u16 num) {
+    out[0] = (char)(num >> 0);
+    out[1] = (char)(num >> 8);
 }
