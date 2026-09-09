@@ -8,28 +8,6 @@
 #define WRITER_MAX_BUFFER_SIZE 256
 #endif
 
-#define HEX_U32_LEN 10 // "0x" + 8 digits
-#define HEX_U16_LEN 6  // "0x" + 4 digits
-#define HEX_U8_LEN 4   // "0x" + 2 digits
-#define HEX_I32_LEN 11 // "-0x" + 8 digits
-#define HEX_I16_LEN 7  // "-0x" + 4 digits
-#define HEX_I8_LEN 5   // "-0x" + 2 digits
-
-#define GET_SIGN_0 U
-#define GET_SIGN_1 I
-
-#define GET_SIGN_8 U  // u8
-#define GET_SIGN_9 I  // i8
-#define GET_SIGN_16 U // u16
-#define GET_SIGN_17 I // i16
-#define GET_SIGN_32 U // u32
-#define GET_SIGN_33 I // i32
-
-#define CONCAT_4_HIDDEN(a, b, c, d) a##b##c##d
-#define CONCAT_4(a, b, c, d) CONCAT_4_HIDDEN(a, b, c, d)
-
-#define HEX_LEN(is_signed, size) CONCAT_4(HEX_, GET_SIGN_##is_signed, size, _LEN)
-
 typedef struct Writer Writer;
 
 // Flush function must be provided. It depends on target architecture.
@@ -41,16 +19,6 @@ struct Writer {
 };
 
 typedef enum {
-    uint8 = 0,
-    uint16 = 1,
-    uint32 = 2,
-
-    int8 = 3,
-    int16 = 4,
-    int32 = 5,
-} int_type;
-
-typedef enum {
     UNSIGNED,
     SIGNED,
 } signedness;
@@ -60,15 +28,6 @@ typedef enum {
     half,
     word,
 } int_size;
-
-typedef union {
-    u8 uint8;
-    u16 uint16;
-    u32 uint32;
-    i8 int8;
-    i16 int16;
-    i32 int32;
-} int_union;
 
 typedef enum {
     FMT_HEX,

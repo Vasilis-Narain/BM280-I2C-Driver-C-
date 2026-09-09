@@ -9,19 +9,13 @@ static u16 spread16(u8 num);
 static u32 spread32(u16 num);
 static void copy16(char *out, u16 num);
 static void copy32(char *out, u32 num);
-static u8 generic_int_to_hex(int_type t, int_union num, char *out);
-static u8 get_int_size(int_type t);
-static b32 is_signed(int_type t);
-static u32 i32_to_string(i32 num, char *buff);
+static u32 to_hex(int_size size, u32 value, char *out);
 static u32 u32_to_string(u32 num, char *buff);
-static b32 _32_to_hex(int_type t, int_union num, char out[HEX_LEN(0, 32)]);
-static b32 _16_to_hex(int_type t, int_union num, char out[HEX_LEN(0, 16)]);
-static b32 _8_to_hex(int_type t, int_union num, char out[HEX_LEN(0, 8)]);
+static u32 i32_to_string(i32 num, char *buff);
 static i32 sign_extend(int_size size, i32 num);
-static i32 print_int_hex(Writer *writer, int_type t, int_union num);
+static i32 print_int_hex(Writer *writer, int_size size, u32 num);
 static i32 print_int_dec(Writer *writer, i32 num);
 static i32 print_uint_dec(Writer *writer, u32 num);
-static int_type get_type(signedness sign, int_size s);
 static char next(const char **fmt, const char *end);
 static u32 unsigned_trunc(int_size size, u32 num);
 
@@ -159,9 +153,8 @@ i32 writer_print(Writer *writer, const char *fmt, u32 length, ...) {
                     }
                     break;
                 case FMT_HEX: {
-                    int_union num = (int_union)va_arg(args, u32);
-                    int_type type = get_type(sign, size);
-                    i32 bytes = print_int_hex(writer, type, num);
+                    u32 num = va_arg(args, u32);
+                    i32 bytes = print_int_hex(writer, size, num);
                     if (bytes < 0) {
                         ERROR_HANDLER();
                     }
@@ -231,18 +224,10 @@ static i32 print_int_dec(Writer *writer, i32 num) {
     return writer_write(writer, (const char *)buff, size);
 }
 
-static i32 print_int_hex(Writer *writer, int_type t, int_union num) {
+static i32 print_int_hex(Writer *writer, int_size size, u32 num) {
     char buff[12];
-    u8 size = generic_int_to_hex(t, num, buff);
-    return writer_write(writer, (const char *)buff, size);
-}
-
-static int_type get_type(signedness sign, int_size s) {
-    i32 offset = 0;
-    if (sign == SIGNED) {
-        offset = 3;
-    }
-    return offset + s;
+    u32 bytes = to_hex(size, num, buff);
+    return writer_write(writer, (const char *)buff, bytes);
 }
 
 void writer_write_char(Writer *writer, char c) {
@@ -327,54 +312,26 @@ static u32 i32_to_string(i32 num, char *buff) {
     return size;
 }
 
-static u8 generic_int_to_hex(int_type t, int_union num, char *out) {
-    char *start = out;
-
-    switch (t) {
-    case uint8:
-    case uint16:
-    case uint32:
+static u32 to_hex(int_size size, u32 value, char *out) {
+    u32 bytes_processed = 0;
+    out[0] = '0';
+    out[1] = 'x';
+    switch (size) {
+    case byte:
+        copy16(out + 2, spread16((u8)value));
+        bytes_processed = 4;
         break;
-
-    case int8:
-        if (num.int8 < 0) {
-            *out++ = '-';
-        }
+    case half:
+        copy32(out + 2, spread32((u16)value));
+        bytes_processed = 6;
         break;
-    case int16:
-        if (num.int16 < 0) {
-            *out++ = '-';
-        }
-        break;
-    case int32:
-        if (num.int32 < 0) {
-            *out++ = '-';
-        }
+    case word:
+        copy32(out + 2, spread32((u16)(value >> 16)));
+        copy32(out + 6, spread32((u16)value));
+        bytes_processed = 10;
         break;
     }
-
-    switch (t) {
-    case uint8:
-    case int8:
-        _8_to_hex(t, num, out);
-        break;
-    case uint16:
-    case int16:
-        _16_to_hex(t, num, out);
-        break;
-    case uint32:
-    case int32:
-        _32_to_hex(t, num, out);
-        break;
-    }
-
-    // Unsigned lengths: the sign char, when emitted, is already counted by
-    // (out - start), so this yields the exact number of chars written.
-    return (u8)((out - start) + get_int_size(t) - (is_signed(t) ? 1 : 0));
-}
-
-static b32 is_signed(int_type t) {
-    return (t == int8) || (t == int16) || (t == int32);
+    return bytes_processed;
 }
 
 static void copy32(char *out, u32 num) {
@@ -387,81 +344,6 @@ static void copy32(char *out, u32 num) {
 static void copy16(char *out, u16 num) {
     out[0] = (char)(num >> 0);
     out[1] = (char)(num >> 8);
-}
-
-static u8 get_int_size(int_type t) {
-    u8 res = 0;
-    switch (t) {
-    case uint8:
-        res = HEX_LEN(0, 8);
-        break;
-    case uint16:
-        res = HEX_LEN(0, 16);
-        break;
-    case uint32:
-        res = HEX_LEN(0, 32);
-        break;
-
-    case int8:
-        res = HEX_LEN(1, 8);
-        break;
-    case int16:
-        res = HEX_LEN(1, 16);
-        break;
-    case int32:
-        res = HEX_LEN(1, 32);
-        break;
-    }
-    return res;
-}
-
-static b32 _32_to_hex(int_type t, int_union num, char out[HEX_LEN(0, 32)]) {
-    out[0] = '0';
-    out[1] = 'x';
-
-    u32 bits;
-    if (t == int32) {
-        bits = (num.int32 < 0) ? (0u - (u32)num.int32) : (u32)num.int32;
-
-    } else if (t == uint32) {
-        bits = num.uint32;
-    } else {
-        return -1;
-    }
-
-    copy32(out + 2, spread32((u16)(bits >> 16)));
-    copy32(out + 6, spread32((u16)(bits)));
-    return 0;
-}
-
-static b32 _16_to_hex(int_type t, int_union num, char out[HEX_LEN(0, 16)]) {
-    out[0] = '0';
-    out[1] = 'x';
-
-    if (t == int16) {
-        u16 mag = (num.int16 < 0) ? (u16)(0u - (u32)(u16)num.int16) : (u16)num.int16;
-        copy32(out + 2, spread32(mag));
-    } else if (t == uint16) {
-        copy32(out + 2, spread32(num.uint16));
-    } else {
-        return -1;
-    }
-    return 0;
-}
-
-static b32 _8_to_hex(int_type t, int_union num, char out[HEX_LEN(0, 8)]) {
-    out[0] = '0';
-    out[1] = 'x';
-
-    if (t == int8) {
-        u8 mag = (num.int8 < 0) ? (u8)(0u - (u32)(u8)num.int8) : (u8)num.int8;
-        copy16(out + 2, spread16(mag));
-    } else if (t == uint8) {
-        copy16(out + 2, spread16(num.uint8));
-    } else {
-        return -1;
-    }
-    return 0;
 }
 
 // Following functions are to convert a uint*_t to a hex string.
