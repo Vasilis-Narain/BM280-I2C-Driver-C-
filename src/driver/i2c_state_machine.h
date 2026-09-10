@@ -55,6 +55,17 @@
 
 #define PADS_I2C_SET (PADS_BANK0_GPIO0_IE_BITS)
 
+typedef enum {
+    I2C_IDLE,
+    I2C_READING,
+    I2C_DONE,
+    I2C_ERROR,
+} i2c_state;
+
+extern volatile i2c_state i2c1_state;
+b32 i2c_start_bulk_read_async(u8 reg_addr, u8 *buf, u32 len);
+void i2c_irq_enable(u8 bus_lane);
+
 void i2c_init_master();
 
 b32 get_tp_params(bme280_calib_tp *tp_params);
