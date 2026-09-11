@@ -5,12 +5,9 @@
 #include <hardware/structs/i2c.h>
 #include <hardware/structs/m33.h>
 #include "addresses.h"
-#include "structs.h"
 
 #define I2C_RESTART_READ_MASK (I2C_IC_DATA_CMD_CMD_BITS | I2C_IC_DATA_CMD_RESTART_BITS)
 #define I2C_RESTART_READ_STOP_MASK (I2C_IC_DATA_CMD_CMD_BITS | I2C_IC_DATA_CMD_RESTART_BITS | I2C_IC_DATA_CMD_STOP_BITS)
-
-#define BME280_LEN_TEMP_PRESS_CALIB 24
 
 #ifndef SDA_PIN
 #define SDA_PIN 14
@@ -84,9 +81,6 @@ u32 i2c_get_fault();
 u32 i2c_abrt_get_dropped();
 
 void i2c_init_master();
-
-b32 get_tp_params(bme280_calib_tp *tp_params);
-b32 get_hum_params(bme280_calib_hum *hum_params);
 
 b32 i2c_blocking_bulk_read_command(u8 start_address, u8 *buffer, u32 length);
 void i2c_blocking_read_command(u8 address, u8 *byte);

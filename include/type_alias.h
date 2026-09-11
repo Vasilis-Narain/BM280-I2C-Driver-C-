@@ -39,3 +39,6 @@ _Static_assert(sizeof(f32) == 4 && sizeof(f64) == 8, "float widths");
 void *memcpy(void *dest, const void *src, usize n); // optionally provide own implementation
 void *memset(void *blk, i32 c, usize n);            // optionally provide own implementation
 usize strlen(const char *str);                      // optionally provide own implementation
+
+#define WFI __asm__ volatile("WFI")
+#define BARRIER __asm__ volatile("" ::: "memory")

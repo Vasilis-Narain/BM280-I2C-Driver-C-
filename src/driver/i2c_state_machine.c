@@ -76,34 +76,6 @@ void i2c_init_master() {
     i2c_hw->enable = 1;
 }
 
-b32 get_tp_params(bme280_calib_tp *tp_params) {
-    u32 length = BME280_LEN_TEMP_PRESS_CALIB;
-    u8 start_addr = 0x88;
-    if (i2c_blocking_bulk_read_command(start_addr, (u8 *)tp_params, length) != 0) {
-        return 1;
-    }
-    return 0;
-}
-
-b32 get_hum_params(bme280_calib_hum *hum_params) {
-    i2c_blocking_read_command(0xa1, &hum_params->dig_h1);
-
-    u8 buff[BME280_LEN_HUMIDITY_CALIB_DATA];
-
-    if (i2c_blocking_bulk_read_command(0xe1, buff, sizeof(buff)) != 0) {
-        return 1;
-    }
-
-    hum_params->dig_h2 = COMBINE_I16(buff[0], buff[1]);
-    hum_params->dig_h3 = buff[2];
-
-    hum_params->dig_h4 = ((i16)(i8)buff[3] * 16) | (buff[4] & 0x0F);
-    hum_params->dig_h5 = ((i16)(i8)buff[5] * 16) | (buff[4] >> 4);
-
-    hum_params->dig_h6 = (i8)buff[6];
-    return 0;
-}
-
 void i2c_blocking_read_command(u8 address, u8 *byte) {
     while (!(i2c_hw->status & I2C_IC_STATUS_TFNF_BITS)) {}
     i2c_hw->data_cmd = address;

@@ -11,6 +11,7 @@
 
 #include "rtt.h"
 #include "driver/i2c_state_machine.h"
+#include "driver/bme280.h"
 
 #define SYST_CYCLES 12
 #define PIN25 25
@@ -23,8 +24,8 @@
 #define EXT_CLK_FREQ_HZ 1000000
 #define SYSTICK_TOP (EXT_CLK_FREQ_HZ / SYSTICK_FREQ_HZ - 1)
 
-#define WFI __asm__ volatile("WFI")
-#define BARRIER __asm__ volatile("" ::: "memory")
+extern void _DEFAULT_Handler();
+#define PANIC _DEFAULT_Handler()
 
 /* clk_sys must already be configured. Usually done in `crt0`*/
 void configure_systick(u8 cycles) {
@@ -60,8 +61,10 @@ void resets_clear(u32 mask) {
 void main() {
 
     char writer_buf[RTT_WRITER_MAX_BUFFER_SIZE];
-    Writer rtt_writer;
-    WRITER_INIT(&rtt_writer, writer_buf, rtt_flush);
+    Writer rtt_writer_instance;
+    Writer *rtt_writer = &rtt_writer_instance;
+
+    WRITER_INIT(rtt_writer, writer_buf, rtt_flush);
 
     // Always first clear reset bits for desired functionalities.
     // In this case: iobank, padsbank, i2c
@@ -81,64 +84,33 @@ void main() {
     // clk_sys must be configured before calling this function.
     configure_systick(SYST_CYCLES);
 
-    write_all(&rtt_writer, "\nRTT OK\n");
+    write_all(rtt_writer, "\nRTT OK\n");
     i2c_init_master();
-    i2c_irq_enable(1);
+    i2c_irq_enable(I2C1);
 
-    bme280_calib_tp tp_params;
-    //get_tp_params(&tp_params);
-    if (i2c_start_bulk_read_async(0x88, (u8 *)&tp_params, 24) == 0) {
-        while (i2c1_state == I2C_READING) {
-            WFI;
-        }
-        BARRIER;
-        if (i2c1_state == I2C_DONE) {
-            write_all(&rtt_writer, "\n...printing tp_params:\n");
-            u16 *tmp = (u16 *)&tp_params;
-            for (u8 i = 0; i < 12; i++) {
-                if (i == 0 || i == 3) {
-                    print(&rtt_writer, "We're printing a uint16: {u:xs}\n", *tmp++);
-                } else {
-                    print(&rtt_writer, "We're printing a int16: {d:s}\n", *tmp++);
-                }
-            }
-        } else { // print abort source once wired
-        }
-        i2c1_state = I2C_IDLE;
+    bme280_calib_t calib_params;
+    i32 calib_error = get_calib_params(&calib_params);
+
+    if (calib_error != 0) {
+        print(rtt_writer, "get_calib_params error: {d}\n", calib_error);
+        flush(rtt_writer);
+        PANIC;
     }
 
-    /*
-    write_all(&rtt_writer, "\n...printing tp_params:\n");
-    u16 *tmp = (u16 *)&tp_params;
+    write_all(rtt_writer, "\n...printing tp_params:\n");
+    u16 *tmp = (u16 *)&calib_params;
     for (u8 i = 0; i < 12; i++) {
         if (i == 0 || i == 3) {
-            print(&rtt_writer, "We're printing a uint16: {u:xs}\n", *tmp++);
+            print(rtt_writer, "param {d}: {u:s}\n", i, *tmp++);
         } else {
-            print(&rtt_writer, "We're printing a int16: {d:s}\n", *tmp++);
+            print(rtt_writer, "param {d}: {d:s}\n", i, *tmp++);
         }
     }
 
-    bme280_calib_hum hum_params;
-    get_hum_params(&hum_params);
-
-    write_all(&rtt_writer, "\n...printing hum_params:\n");
-    tmp = (u16 *)&hum_params;
-
-    // NOTE(vasilis): this doesnt actually select the 'correct' bytes...
-    // its here to test the printing API itself.
-    for (u32 i = 0; i < 6; i++) {
-        if (i == 0 || i == 2) {
-            print(&rtt_writer, "We're printing a uint8: {u:xb}\n", *tmp++);
-        } else if (i == 5) {
-            print(&rtt_writer, "We're printing a int8: {d:xb}\n", *tmp++);
-        } else {
-            print(&rtt_writer, "We're printing a int16: {d:xs}\n", *tmp++);
-        }
-    }
-    */
+    write_all(rtt_writer, "\nSUCCESS!\n");
 
     // dont forget to flush :D
-    flush(&rtt_writer);
+    flush(rtt_writer);
 
     for (;;) {
         WFI;

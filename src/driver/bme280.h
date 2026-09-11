@@ -1,10 +1,13 @@
+#pragma once
 #include <type_alias.h>
 #include "addresses.h"
+#include "i2c_state_machine.h"
 
 #define COMBINE_U16(lsb, msb) ((u16)((msb << 8) | lsb))
 #define COMBINE_I16(lsb, msb) ((i16)((msb << 8) | lsb))
 
 typedef struct {
+    // bulk read 1: 26 bytes
     u16 dig_t1;
     i16 dig_t2;
     i16 dig_t3;
@@ -18,11 +21,11 @@ typedef struct {
     i16 dig_p7;
     i16 dig_p8;
     i16 dig_p9;
-} bme280_calib_tp;
 
-typedef struct {
-    u8 dig_h1;
     u8 _pad1;
+    u8 dig_h1;
+
+    // bulk read 2 : 7 bytes
     i16 dig_h2;
     u8 dig_h3;
     u8 _pad2;
@@ -30,4 +33,6 @@ typedef struct {
     i16 dig_h5;
     i8 dig_h6;
     u8 _pad3;
-} bme280_calib_hum;
+} bme280_calib_t;
+
+i32 get_calib_params(bme280_calib_t *calib_params);
