@@ -55,6 +55,18 @@
 
 #define PADS_I2C_SET (PADS_BANK0_GPIO0_IE_BITS)
 
+// Fault error codes
+#define I2C_FAULT_ABORT (1u << 0)
+#define I2C_FAULT_OVERRUN (1u << 1)
+
+// Bus error
+#define I2C_BUS_BUSY -1
+
+typedef enum {
+    I2C0,
+    I2C1,
+} i2c_lane;
+
 typedef enum {
     I2C_IDLE,
     I2C_READING,
@@ -63,8 +75,13 @@ typedef enum {
 } i2c_state;
 
 extern volatile i2c_state i2c1_state;
+
 b32 i2c_start_bulk_read_async(u8 reg_addr, u8 *buf, u32 len);
-void i2c_irq_enable(u8 bus_lane);
+void i2c_irq_enable(i2c_lane bus_lane);
+u32 i2c_get_abrt_source();
+u32 i2c_get_received();
+u32 i2c_get_fault();
+u32 i2c_abrt_get_dropped();
 
 void i2c_init_master();
 

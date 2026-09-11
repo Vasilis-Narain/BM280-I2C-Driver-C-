@@ -67,9 +67,6 @@ void main() {
     // In this case: iobank, padsbank, i2c
     resets_clear(RESETS_CLEAR);
 
-    // clk_sys must be configured before calling this function.
-    configure_systick(SYST_CYCLES);
-
     //io_bank0_hw -> gpio function selection
     io_bank0_hw->io[PIN25].ctrl = GPIO_FUNC_SIO;
     io_bank0_hw->io[SDA_PIN].ctrl = GPIO_FUNC_I2C;
@@ -78,31 +75,37 @@ void main() {
     // Pads bank -> configure pads for led
     hw_clear_bits(&pads_bank0_hw->io[PIN25], PADS_BANK0_GPIO0_ISO_BITS);
 
+    // output enable SIO reg. Special atomic registers for SIO
+    sio_hw->gpio_oe_set = 1 << PIN25;
+
+    // clk_sys must be configured before calling this function.
+    configure_systick(SYST_CYCLES);
+
     write_all(&rtt_writer, "\nRTT OK\n");
-    i2c_irq_enable(1);
     i2c_init_master();
+    i2c_irq_enable(1);
 
     bme280_calib_tp tp_params;
     //get_tp_params(&tp_params);
-    i2c_start_bulk_read_async(0x88, (u8 *)&tp_params, 24);
-    while (i2c1_state == I2C_READING) {
-        WFI;
-    }
-    BARRIER;
-
-    if (i2c1_state == I2C_DONE) {
-        write_all(&rtt_writer, "\n...printing tp_params:\n");
-        u16 *tmp = (u16 *)&tp_params;
-        for (u8 i = 0; i < 12; i++) {
-            if (i == 0 || i == 3) {
-                print(&rtt_writer, "We're printing a uint16: {u:xs}\n", *tmp++);
-            } else {
-                print(&rtt_writer, "We're printing a int16: {d:s}\n", *tmp++);
-            }
+    if (i2c_start_bulk_read_async(0x88, (u8 *)&tp_params, 24) == 0) {
+        while (i2c1_state == I2C_READING) {
+            WFI;
         }
-    } else { // print abort source once wired
+        BARRIER;
+        if (i2c1_state == I2C_DONE) {
+            write_all(&rtt_writer, "\n...printing tp_params:\n");
+            u16 *tmp = (u16 *)&tp_params;
+            for (u8 i = 0; i < 12; i++) {
+                if (i == 0 || i == 3) {
+                    print(&rtt_writer, "We're printing a uint16: {u:xs}\n", *tmp++);
+                } else {
+                    print(&rtt_writer, "We're printing a int16: {d:s}\n", *tmp++);
+                }
+            }
+        } else { // print abort source once wired
+        }
+        i2c1_state = I2C_IDLE;
     }
-    i2c1_state = I2C_IDLE;
 
     /*
     write_all(&rtt_writer, "\n...printing tp_params:\n");
@@ -137,9 +140,7 @@ void main() {
     // dont forget to flush :D
     flush(&rtt_writer);
 
-    sio_hw->gpio_oe_set = 1 << PIN25; // output enable SIO reg. Special atomic registers for SIO
-
     for (;;) {
-        __asm__ volatile("WFI");
+        WFI;
     }
 }

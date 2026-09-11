@@ -37,6 +37,7 @@
 */
 static void pump_tx();
 static void drain_rx();
+static void clear_rx();
 
 //NOTE(vasilis): these are the I2C interrupt handlers:
 //void __attribute__((weak, alias("_DEFAULT_Handler"))) I2C0_IRQ_Handler();
@@ -144,25 +145,47 @@ b32 i2c_blocking_bulk_read_command(u8 start_address, u8 *buffer, u32 length) {
     }
     return 0;
 }
+
 volatile i2c_state i2c1_state = I2C_IDLE;
 typedef struct {
     u8 *buf;
     u32 issued;
     u32 received;
     u32 length;
+    u32 abrt_source;
+    u32 fault;
     u8 reg_addr;
 } i2c_descriptor;
 
+//static i2c_descriptor i2c0_descriptor;
 static i2c_descriptor i2c1_descriptor;
 
-#define I2C_BUS_BUSY -1
+u32 i2c_get_fault() {
+    return i2c1_descriptor.fault;
+}
 
-void i2c_irq_enable(u8 bus_lane) {
-    i2c1_hw->intr_mask = (I2C_IC_INTR_MASK_M_TX_EMPTY_BITS | I2C_IC_INTR_MASK_M_RX_FULL_BITS |
-                          I2C_IC_INTR_MASK_M_STOP_DET_BITS | I2C_IC_INTR_MASK_M_TX_ABRT_BITS);
-    if (bus_lane == 0) {
+u32 i2c_get_received() {
+    return i2c1_descriptor.received;
+}
+
+u32 i2c_get_abrt_source() {
+    return i2c1_descriptor.abrt_source;
+}
+
+u32 i2c_abrt_get_dropped() {
+    return i2c1_descriptor.length - i2c1_descriptor.received;
+}
+
+void i2c_irq_enable(i2c_lane bus_lane) {
+    if (bus_lane == I2C0) {
+        i2c0_hw->intr_mask = (I2C_IC_INTR_MASK_M_TX_EMPTY_BITS | I2C_IC_INTR_MASK_M_RX_FULL_BITS |
+                              I2C_IC_INTR_MASK_M_STOP_DET_BITS | I2C_IC_INTR_MASK_M_TX_ABRT_BITS |
+                              I2C_IC_INTR_MASK_M_RX_OVER_BITS);
         m33_hw->nvic_iser[1] = 1u << 4;
-    } else {
+    } else if (bus_lane == I2C1) {
+        i2c1_hw->intr_mask = (I2C_IC_INTR_MASK_M_TX_EMPTY_BITS | I2C_IC_INTR_MASK_M_RX_FULL_BITS |
+                              I2C_IC_INTR_MASK_M_STOP_DET_BITS | I2C_IC_INTR_MASK_M_TX_ABRT_BITS |
+                              I2C_IC_INTR_MASK_M_RX_OVER_BITS);
         m33_hw->nvic_iser[1] = 1u << 5;
     }
 }
@@ -178,6 +201,7 @@ b32 i2c_start_bulk_read_async(u8 reg_addr, u8 *buf, u32 len) {
         .received = 0,
         .length = len,
         .reg_addr = reg_addr,
+        .abrt_source = 0,
     };
 
     i2c1_hw->data_cmd = reg_addr;
@@ -191,11 +215,25 @@ void I2C1_IRQ_Handler() {
     u32 irq_status = i2c1_hw->intr_stat;
 
     if (irq_status & I2C_IC_INTR_STAT_R_TX_ABRT_BITS) {
-        // TODO(vasilis): also latch abort source for post mortem
+        u32 abrt_source = i2c1_hw->tx_abrt_source;
         (void)i2c1_hw->clr_tx_abrt;
-        i2c1_hw->intr_mask &= ~(I2C_IC_INTR_MASK_M_TX_EMPTY_BITS | I2C_IC_INTR_MASK_M_RX_FULL_BITS);
-        i2c1_state = I2C_ERROR;
+        (void)i2c1_hw->clr_stop_det;
+        if (i2c1_state == I2C_READING) {
+            i2c1_descriptor.abrt_source = abrt_source;
+            i2c1_hw->intr_mask &= ~(I2C_IC_INTR_MASK_M_TX_EMPTY_BITS | I2C_IC_INTR_MASK_M_RX_FULL_BITS);
+            clear_rx();
+            i2c1_descriptor.fault |= I2C_FAULT_ABORT;
+            i2c1_state = I2C_ERROR;
+        }
         return;
+    }
+
+    if (irq_status & I2C_IC_INTR_STAT_R_RX_OVER_BITS) {
+        (void)i2c1_hw->clr_rx_over;
+        if (i2c1_state == I2C_READING) {
+            i2c1_descriptor.fault |= I2C_FAULT_OVERRUN;
+            i2c1_state = I2C_ERROR;
+        }
     }
 
     if (irq_status & I2C_IC_INTR_STAT_R_RX_FULL_BITS) {
@@ -208,8 +246,10 @@ void I2C1_IRQ_Handler() {
 
     if (irq_status & I2C_IC_INTR_STAT_R_STOP_DET_BITS) {
         (void)i2c1_hw->clr_stop_det;
-        drain_rx();
-        i2c1_state = I2C_DONE;
+        if (i2c1_state == I2C_READING) {
+            drain_rx();
+            i2c1_state = (i2c1_descriptor.received == i2c1_descriptor.length) ? I2C_DONE : I2C_ERROR;
+        }
     }
 }
 
@@ -233,5 +273,11 @@ static void pump_tx() {
     }
     if (i2c1_descriptor.issued == i2c1_descriptor.length) {
         i2c1_hw->intr_mask &= ~I2C_IC_INTR_MASK_M_TX_EMPTY_BITS;
+    }
+}
+
+static void clear_rx() {
+    while (i2c1_hw->rxflr) {
+        (void)(i2c_hw->data_cmd & I2C_IC_DATA_CMD_DAT_BITS);
     }
 }
