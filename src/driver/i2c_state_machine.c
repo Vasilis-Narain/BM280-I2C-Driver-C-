@@ -42,7 +42,6 @@ static void clear_rx();
 //NOTE(vasilis): these are the I2C interrupt handlers:
 //void __attribute__((weak, alias("_DEFAULT_Handler"))) I2C0_IRQ_Handler();
 //void __attribute__((weak, alias("_DEFAULT_Handler"))) I2C1_IRQ_Handler();
-//
 
 // Make sure to `#define SDA_PIN` and `#define SCL_PIN` to be used by pico.
 // Defaults are 14 and 15 respectively.
@@ -74,48 +73,6 @@ void i2c_init_master() {
     i2c_hw->sda_hold = 4;
 
     i2c_hw->enable = 1;
-}
-
-void i2c_blocking_read_command(u8 address, u8 *byte) {
-    while (!(i2c_hw->status & I2C_IC_STATUS_TFNF_BITS)) {}
-    i2c_hw->data_cmd = address;
-
-    while (!(i2c_hw->status & I2C_IC_STATUS_TFNF_BITS)) {}
-    i2c_hw->data_cmd = I2C_IC_DATA_CMD_CMD_BITS | I2C_IC_DATA_CMD_RESTART_BITS | I2C_IC_DATA_CMD_STOP_BITS;
-
-    while (i2c_hw->rxflr == 0) {}
-    *byte = i2c_hw->data_cmd & I2C_IC_DATA_CMD_DAT_BITS;
-}
-
-b32 i2c_blocking_bulk_read_command(u8 start_address, u8 *buffer, u32 length) {
-    while (!(i2c_hw->status & I2C_IC_STATUS_TFNF_BITS)) {}
-    i2c_hw->data_cmd = start_address;
-
-    u32 issued = 0;
-    u32 received = 0;
-    while (received < length) {
-        if ((issued < length) && (i2c_hw->status & I2C_IC_STATUS_TFNF_BITS)) { // same as TX_EMPTY interrupt
-            u32 cmd = I2C_IC_DATA_CMD_CMD_BITS;
-            if (issued == 0) {
-                cmd |= I2C_IC_DATA_CMD_RESTART_BITS;
-            }
-            if (issued == length - 1) {
-                cmd |= I2C_IC_DATA_CMD_STOP_BITS;
-            }
-            i2c_hw->data_cmd = cmd;
-            issued++;
-        }
-
-        if (i2c_hw->status & I2C_IC_STATUS_RFNE_BITS) { // same as RX_FULL interrupt
-            buffer[received++] = (u8)(i2c_hw->data_cmd & I2C_IC_DATA_CMD_DAT_BITS);
-        }
-
-        if (i2c_hw->raw_intr_stat & I2C_IC_RAW_INTR_STAT_TX_ABRT_BITS) {
-            (void)i2c_hw->clr_tx_abrt;
-            return 1;
-        }
-    }
-    return 0;
 }
 
 volatile i2c_state i2c1_state = I2C_IDLE;

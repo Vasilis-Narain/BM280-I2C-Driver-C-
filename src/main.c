@@ -89,7 +89,7 @@ void main() {
     i2c_irq_enable(I2C1);
 
     bme280_calib_t calib_params;
-    i32 calib_error = get_calib_params(&calib_params);
+    i32 calib_error = bme280_get_calib_params(&calib_params);
 
     if (calib_error != 0) {
         print(rtt_writer, "get_calib_params error: {d}\n", calib_error);

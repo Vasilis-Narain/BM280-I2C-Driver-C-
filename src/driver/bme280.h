@@ -35,4 +35,16 @@ typedef struct {
     u8 _pad3;
 } bme280_calib_t;
 
-i32 get_calib_params(bme280_calib_t *calib_params);
+i32 bme280_get_calib_params(bme280_calib_t *calib_params);
+
+// returns temperature in DegC, resolution is 0.01 DegC.
+// Output value of "5123" equals 51.23 DegC
+i32 bme280_compensate_t(bme280_calib_t *calib, i32 adc_temp);
+
+// returns pressure in Pa as unsigned 32 bit integer.
+// Output value of "96386" equals 96386 Pa = 963.86 hPa
+u32 bme280_compensate_p(bme280_calib_t *calib, i32 adc_pressure);
+
+// returns humidity in %RH as unsigned 32 bit integer in Q22.10 format (22 integer and 10 fractional bits).
+// Output value of "47445" represents 47445/1024 = 46.333 %RH
+u32 bme280_compensate_h(bme280_calib_t *calib, i32 adc_humidity);
