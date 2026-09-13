@@ -2,7 +2,7 @@
 static i32 get_tp_params(bme280_calib_t *calib_params);
 static i32 get_hum_params(bme280_calib_t *calib_params);
 
-// blocking function
+// blocking function to get calib data
 i32 bme280_get_calib_params(bme280_calib_t *calib_params) {
     i32 tp_err = get_tp_params(calib_params);
     if (tp_err != 0) {

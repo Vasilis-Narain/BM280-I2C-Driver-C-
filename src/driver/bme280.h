@@ -6,6 +6,25 @@
 #define COMBINE_U16(lsb, msb) ((u16)((msb << 8) | lsb))
 #define COMBINE_I16(lsb, msb) ((i16)((msb << 8) | lsb))
 
+#define BME280_OSR_T_LSB (5)
+#define BME280_OSR_P_LSB (2)
+#define BME280_OSR_H_LSB (0)
+#define BME280_MODE_LSB (0)
+#define BME280_T_SB_LSB (5)
+#define BME280_FILTER_LSB (2)
+
+// default settings for Humidity Sensing (from datasheet):
+// Sensor mode: forced (@ 1 sample/second) or normal
+// Oversampling settings: pressure x0, temperature x1, humidity x1
+// IIR filter settings: filter off
+#define BME280_DEFAULT_CTRL_MEAS ((BME280_OVERSAMPLING_1X << BME280_OSR_T_LSB) | \
+                                  (BME280_NO_OVERSAMPLING << BME280_OSR_P_LSB) | \
+                                  (BME280_POWERMODE_NORMAL << BME280_MODE_LSB))
+
+#define BME280_DEFAULT_CTRL_HUM (BME280_OVERSAMPLING_1X << BME280_OSR_H_LSB)
+
+#define BME280_DEFAULT_CONFIG ((BME280_STANDBY_TIME_0_5_MS << BME280_T_SB_LSB) | (BME280_FILTER_COEFF_OFF << BME280_FILTER_LSB))
+
 typedef struct {
     // bulk read 1: 26 bytes
     u16 dig_t1;
@@ -22,17 +41,18 @@ typedef struct {
     i16 dig_p8;
     i16 dig_p9;
 
+    // pad necessary for reading inplace with bulk read (auto-incrementing address)
     u8 _pad1;
     u8 dig_h1;
 
     // bulk read 2 : 7 bytes
+    // pad not required since reading these params needs a temp buffer anyway
+    // and are set by name.
     i16 dig_h2;
-    u8 dig_h3;
-    u8 _pad2;
     i16 dig_h4;
     i16 dig_h5;
+    u8 dig_h3;
     i8 dig_h6;
-    u8 _pad3;
 } bme280_calib_t;
 
 i32 bme280_get_calib_params(bme280_calib_t *calib_params);

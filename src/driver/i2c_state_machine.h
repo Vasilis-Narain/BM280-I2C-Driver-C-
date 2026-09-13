@@ -67,6 +67,7 @@ typedef enum {
 typedef enum {
     I2C_IDLE,
     I2C_READING,
+    I2C_WRITING,
     I2C_DONE,
     I2C_ERROR,
 } i2c_state;

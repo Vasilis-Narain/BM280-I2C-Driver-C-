@@ -107,6 +107,18 @@ void main() {
         }
     }
 
+    u8 config_addresses[] = {
+        BME280_REG_CONFIG,
+        BME280_REG_CTRL_HUM,
+        BME280_REG_CTRL_MEAS,
+    };
+
+    u8 config_data[] = {
+        BME280_DEFAULT_CONFIG,
+        BME280_DEFAULT_CTRL_HUM,
+        BME280_DEFAULT_CTRL_MEAS,
+    };
+
     write_all(rtt_writer, "\nSUCCESS!\n");
 
     // dont forget to flush :D

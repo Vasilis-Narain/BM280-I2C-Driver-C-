@@ -35,7 +35,8 @@
  * RX_UNDER -> processor attempts to read receive buffer when empty
  *
 */
-static void pump_tx();
+static void pump_tx_write();
+static void pump_tx_read();
 static void drain_rx();
 static void clear_rx();
 
@@ -78,6 +79,8 @@ void i2c_init_master() {
 volatile i2c_state i2c1_state = I2C_IDLE;
 typedef struct {
     u8 *buf;
+    u8 *write_registers;
+    b32 write_is_data;
     u32 issued;
     u32 received;
     u32 length;
@@ -140,6 +143,29 @@ b32 i2c_start_bulk_read_async(u8 reg_addr, u8 *buf, u32 len) {
     return 0;
 }
 
+typedef struct {
+    u8 *addresses;
+    u8 *data;
+    u32 capacity;
+} i2c_address_data_pair_array;
+
+b32 i2c_start_bulk_write_async(i2c_address_data_pair_array *input) {
+    if (i2c1_state != I2C_IDLE) {
+        return I2C_BUS_BUSY;
+    }
+
+    i2c1_descriptor = (i2c_descriptor){
+        .buf = input->data,
+        .write_registers = input->addresses,
+        .length = input->capacity,
+    };
+
+    i2c1_state = I2C_WRITING;
+    i2c1_hw->intr_mask |= (I2C_IC_INTR_MASK_M_TX_EMPTY_BITS | I2C_IC_INTR_MASK_M_RX_FULL_BITS);
+
+    return 0;
+}
+
 void I2C1_IRQ_Handler() {
     u32 irq_status = i2c1_hw->intr_stat;
 
@@ -166,11 +192,19 @@ void I2C1_IRQ_Handler() {
     }
 
     if (irq_status & I2C_IC_INTR_STAT_R_RX_FULL_BITS) {
-        drain_rx();
+        if (i2c1_state == I2C_READING) {
+            drain_rx();
+        } else {
+            clear_rx();
+        }
     }
 
     if (irq_status & I2C_IC_INTR_STAT_R_TX_EMPTY_BITS) {
-        pump_tx();
+        if (i2c1_state == I2C_READING) {
+            pump_tx_read();
+        } else if (i2c1_state == I2C_WRITING) {
+            pump_tx_write();
+        }
     }
 
     if (irq_status & I2C_IC_INTR_STAT_R_STOP_DET_BITS) {
@@ -188,7 +222,7 @@ static void drain_rx() {
     }
 }
 
-static void pump_tx() {
+static void pump_tx_read() {
     while ((i2c1_descriptor.issued < i2c1_descriptor.length) && (i2c_hw->status & I2C_IC_STATUS_TFNF_BITS)) { // same as TX_EMPTY interrupt
         u32 cmd = I2C_IC_DATA_CMD_CMD_BITS;
         if (i2c1_descriptor.issued == 0) {
@@ -199,6 +233,26 @@ static void pump_tx() {
         }
         i2c_hw->data_cmd = cmd;
         i2c1_descriptor.issued++;
+    }
+    if (i2c1_descriptor.issued == i2c1_descriptor.length) {
+        i2c1_hw->intr_mask &= ~I2C_IC_INTR_MASK_M_TX_EMPTY_BITS;
+    }
+}
+
+static void pump_tx_write() {
+    while ((i2c1_descriptor.issued < i2c1_descriptor.length) && (i2c_hw->status & I2C_IC_STATUS_TFNF_BITS)) { // same as TX_EMPTY interrupt
+        u32 cmd = 0;
+        if (!i2c1_descriptor.write_is_data) {
+            cmd = i2c1_descriptor.write_registers[i2c1_descriptor.issued];
+        } else {
+            cmd = i2c1_descriptor.buf[i2c1_descriptor.issued];
+            if (i2c1_descriptor.issued == i2c1_descriptor.length - 1) {
+                cmd |= I2C_IC_DATA_CMD_STOP_BITS;
+            }
+            i2c1_descriptor.issued++;
+        }
+        i2c1_descriptor.write_is_data = !i2c1_descriptor.write_is_data;
+        i2c_hw->data_cmd = cmd;
     }
     if (i2c1_descriptor.issued == i2c1_descriptor.length) {
         i2c1_hw->intr_mask &= ~I2C_IC_INTR_MASK_M_TX_EMPTY_BITS;
