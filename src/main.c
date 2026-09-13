@@ -24,6 +24,9 @@
 #define EXT_CLK_FREQ_HZ 1000000
 #define SYSTICK_TOP (EXT_CLK_FREQ_HZ / SYSTICK_FREQ_HZ - 1)
 
+// DEBUG: storm guard snapshot from i2c_state_machine.c
+extern volatile u32 dbg_isr_hits, dbg_intr_stat, dbg_intr_mask, dbg_rxflr, dbg_txflr, dbg_state;
+
 extern void _DEFAULT_Handler();
 #define PANIC _DEFAULT_Handler()
 
@@ -106,7 +109,9 @@ void main() {
             print(rtt_writer, "param {d}: {d:s}\n", i, *tmp++);
         }
     }
+    flush(rtt_writer);
 
+    // Testing write config async
     u8 config_addresses[] = {
         BME280_REG_CONFIG,
         BME280_REG_CTRL_HUM,
@@ -119,7 +124,36 @@ void main() {
         BME280_DEFAULT_CTRL_MEAS,
     };
 
-    write_all(rtt_writer, "\nSUCCESS!\n");
+    i2c_address_data_pair_array data_pairs = {
+        .addresses = config_addresses,
+        .data = config_data,
+        .capacity = 3,
+    };
+
+    i2c_start_bulk_write_async(&data_pairs);
+    while (i2c1_state == I2C_WRITING) {
+        WFI;
+    }
+    BARRIER;
+    if (i2c1_state == I2C_ERROR) {
+        print(rtt_writer, "write err fault={u:x} abrt={u:x}\n", i2c_get_fault(), i2c_get_abrt_source());
+        print(rtt_writer, "hits={u} stat={u:x} mask={u:x}\n", dbg_isr_hits, dbg_intr_stat, dbg_intr_mask);
+        print(rtt_writer, "state={u} rxflr={u} txflr={u}\n", dbg_state, dbg_rxflr, dbg_txflr);
+        flush(rtt_writer);
+        PANIC;
+    }
+    i2c1_state = I2C_IDLE;
+
+    u8 readback[4];
+    i2c_start_bulk_read_async(BME280_REG_CTRL_HUM, readback, 4); //0xf2..0xf5
+    while (i2c1_state == I2C_READING) {
+        WFI;
+    }
+    BARRIER;
+    i2c1_state = I2C_IDLE;
+    print(rtt_writer, "\nhum={u:xb} meas={u:xb} cfg={u:xb}\n", readback[0], readback[2], readback[3]);
+
+    write_all(rtt_writer, "\nSETUP SUCCESS!\n");
 
     // dont forget to flush :D
     flush(rtt_writer);

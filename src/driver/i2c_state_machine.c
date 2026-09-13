@@ -110,17 +110,23 @@ u32 i2c_abrt_get_dropped() {
 
 void i2c_irq_enable(i2c_lane bus_lane) {
     if (bus_lane == I2C0) {
-        i2c0_hw->intr_mask = (I2C_IC_INTR_MASK_M_TX_EMPTY_BITS | I2C_IC_INTR_MASK_M_RX_FULL_BITS |
-                              I2C_IC_INTR_MASK_M_STOP_DET_BITS | I2C_IC_INTR_MASK_M_TX_ABRT_BITS |
+        i2c0_hw->intr_mask = (I2C_IC_INTR_MASK_M_STOP_DET_BITS | I2C_IC_INTR_MASK_M_TX_ABRT_BITS |
                               I2C_IC_INTR_MASK_M_RX_OVER_BITS);
         m33_hw->nvic_iser[1] = 1u << 4;
     } else if (bus_lane == I2C1) {
-        i2c1_hw->intr_mask = (I2C_IC_INTR_MASK_M_TX_EMPTY_BITS | I2C_IC_INTR_MASK_M_RX_FULL_BITS |
-                              I2C_IC_INTR_MASK_M_STOP_DET_BITS | I2C_IC_INTR_MASK_M_TX_ABRT_BITS |
+        i2c1_hw->intr_mask = (I2C_IC_INTR_MASK_M_STOP_DET_BITS | I2C_IC_INTR_MASK_M_TX_ABRT_BITS |
                               I2C_IC_INTR_MASK_M_RX_OVER_BITS);
         m33_hw->nvic_iser[1] = 1u << 5;
     }
 }
+
+// DEBUG: storm guard snapshot, remove once write is fixed
+volatile u32 dbg_isr_hits;
+volatile u32 dbg_intr_stat;
+volatile u32 dbg_intr_mask;
+volatile u32 dbg_rxflr;
+volatile u32 dbg_txflr;
+volatile u32 dbg_state;
 
 b32 i2c_start_bulk_read_async(u8 reg_addr, u8 *buf, u32 len) {
     if (i2c1_state != I2C_IDLE) {
@@ -136,18 +142,13 @@ b32 i2c_start_bulk_read_async(u8 reg_addr, u8 *buf, u32 len) {
         .abrt_source = 0,
     };
 
+    dbg_isr_hits = 0; // DEBUG
     i2c1_hw->data_cmd = reg_addr;
     i2c1_state = I2C_READING;
     i2c1_hw->intr_mask |= (I2C_IC_INTR_MASK_M_TX_EMPTY_BITS | I2C_IC_INTR_MASK_M_RX_FULL_BITS);
 
     return 0;
 }
-
-typedef struct {
-    u8 *addresses;
-    u8 *data;
-    u32 capacity;
-} i2c_address_data_pair_array;
 
 b32 i2c_start_bulk_write_async(i2c_address_data_pair_array *input) {
     if (i2c1_state != I2C_IDLE) {
@@ -160,8 +161,9 @@ b32 i2c_start_bulk_write_async(i2c_address_data_pair_array *input) {
         .length = input->capacity,
     };
 
+    dbg_isr_hits = 0; // DEBUG
     i2c1_state = I2C_WRITING;
-    i2c1_hw->intr_mask |= (I2C_IC_INTR_MASK_M_TX_EMPTY_BITS | I2C_IC_INTR_MASK_M_RX_FULL_BITS);
+    i2c1_hw->intr_mask |= (I2C_IC_INTR_MASK_M_TX_EMPTY_BITS);
 
     return 0;
 }
@@ -169,11 +171,23 @@ b32 i2c_start_bulk_write_async(i2c_address_data_pair_array *input) {
 void I2C1_IRQ_Handler() {
     u32 irq_status = i2c1_hw->intr_stat;
 
+    // DEBUG: storm guard
+    if (++dbg_isr_hits > 10000) {
+        dbg_intr_stat = irq_status;
+        dbg_intr_mask = i2c1_hw->intr_mask;
+        dbg_rxflr = i2c1_hw->rxflr;
+        dbg_txflr = i2c1_hw->txflr;
+        dbg_state = i2c1_state;
+        i2c1_hw->intr_mask = 0;
+        i2c1_state = I2C_ERROR;
+        return;
+    }
+
     if (irq_status & I2C_IC_INTR_STAT_R_TX_ABRT_BITS) {
         u32 abrt_source = i2c1_hw->tx_abrt_source;
         (void)i2c1_hw->clr_tx_abrt;
         (void)i2c1_hw->clr_stop_det;
-        if (i2c1_state == I2C_READING) {
+        if (i2c1_state == I2C_READING || i2c1_state == I2C_WRITING) {
             i2c1_descriptor.abrt_source = abrt_source;
             i2c1_hw->intr_mask &= ~(I2C_IC_INTR_MASK_M_TX_EMPTY_BITS | I2C_IC_INTR_MASK_M_RX_FULL_BITS);
             clear_rx();
@@ -213,6 +227,14 @@ void I2C1_IRQ_Handler() {
             drain_rx();
             i2c1_state = (i2c1_descriptor.received == i2c1_descriptor.length) ? I2C_DONE : I2C_ERROR;
         }
+        if (i2c1_state == I2C_WRITING) {
+            clear_rx();
+            i2c1_state = (i2c1_descriptor.issued == i2c1_descriptor.length) ? I2C_DONE : I2C_ERROR;
+        }
+    }
+
+    if (i2c1_state != I2C_READING && i2c1_state != I2C_WRITING) {
+        i2c1_hw->intr_mask &= ~(I2C_IC_INTR_MASK_M_TX_EMPTY_BITS | I2C_IC_INTR_MASK_M_RX_FULL_BITS);
     }
 }
 

@@ -72,9 +72,16 @@ typedef enum {
     I2C_ERROR,
 } i2c_state;
 
+typedef struct {
+    u8 *addresses;
+    u8 *data;
+    u32 capacity;
+} i2c_address_data_pair_array;
+
 extern volatile i2c_state i2c1_state;
 
 b32 i2c_start_bulk_read_async(u8 reg_addr, u8 *buf, u32 len);
+b32 i2c_start_bulk_write_async(i2c_address_data_pair_array *input);
 void i2c_irq_enable(i2c_lane bus_lane);
 u32 i2c_get_abrt_source();
 u32 i2c_get_received();
